@@ -9,8 +9,9 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from './modules/auth/guards/roles.guard';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { MenuModule } from './modules/menu/menu.module';
+import { OrdersModule } from './modules/order/order.module';
 @Module({
-  imports: [PrismaModule, ConfigModule.forRoot({isGlobal : true}) , PrismaModule , AuthModule , CategoriesModule, MenuModule],
+  imports: [PrismaModule, ConfigModule.forRoot({isGlobal : true}) , PrismaModule , AuthModule , CategoriesModule, MenuModule ,OrdersModule],
   
   providers: [
     {provide : APP_GUARD , useClass : JwtAuthGuard},

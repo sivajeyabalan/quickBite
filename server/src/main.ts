@@ -2,6 +2,7 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
@@ -21,7 +22,25 @@ async function bootstrap() {
     credentials: true,
   });
 
+  // ─── Swagger ────────────────────────────────────────────────────
+  const config = new DocumentBuilder()
+    .setTitle('QuickBite API')
+    .setDescription('Restaurant ordering system REST API')
+    .setVersion('1.0')
+    .addBearerAuth(
+      { type: 'http', scheme: 'bearer', bearerFormat: 'JWT', in: 'header' },
+      'access-token',
+    )
+    .build();
+
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('docs', app, document, {
+    swaggerOptions: { persistAuthorization: true },
+  });
+  // ────────────────────────────────────────────────────────────────
+
   await app.listen(process.env.PORT ?? 3001);
   console.log(`🚀 Server running on http://localhost:3001/api`);
+  console.log(`📖 Swagger docs at  http://localhost:3001/docs`);
 }
 bootstrap();

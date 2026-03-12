@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Body, HttpCode, HttpStatus, UseGuards, Res } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiCookieAuth } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { AuthService } from './auth.service';
 import { Public } from './decorators/public.decorators';
@@ -14,10 +15,13 @@ const REFRESH_COOKIE_OPTIONS = {
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
 };
 
+@ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @ApiOperation({ summary: 'Register a new user' })
+  @ApiResponse({ status: 201, description: 'Returns user + access_token; sets refresh_token cookie' })
   @Public()
   @Post('register')
   async register(
@@ -29,6 +33,8 @@ export class AuthController {
     return { data, message: 'Registered successfully', statusCode: 201 };
   }
 
+  @ApiOperation({ summary: 'Login with email & password' })
+  @ApiResponse({ status: 200, description: 'Returns user + access_token; sets refresh_token cookie' })
   @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
@@ -41,11 +47,15 @@ export class AuthController {
     return { data, message: 'Login successful', statusCode: 200 };
   }
 
+  @ApiOperation({ summary: 'Get current authenticated user' })
+  @ApiBearerAuth('access-token')
   @Get('me')
   getMe(@CurrentUser() user: any) {
     return this.authService.getMe(user.id);
   }
 
+  @ApiOperation({ summary: 'Get a new access token using refresh_token cookie' })
+  @ApiCookieAuth('refresh_token')
   @Public()
   @UseGuards(JwtRefreshGuard)
   @Post('refresh')
@@ -54,6 +64,8 @@ export class AuthController {
     return this.authService.refresh(user.id, user.email, user.role);
   }
 
+  @ApiOperation({ summary: 'Logout — invalidates refresh token and clears cookie' })
+  @ApiBearerAuth('access-token')
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   async logout(
