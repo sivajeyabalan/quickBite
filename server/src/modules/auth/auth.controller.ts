@@ -1,0 +1,67 @@
+import { Controller, Get, Post, Body, HttpCode, HttpStatus, UseGuards, Res } from '@nestjs/common';
+import type { Response } from 'express';
+import { AuthService } from './auth.service';
+import { Public } from './decorators/public.decorators';
+import { RegisterDto } from './dto/register.dto';
+import { LoginDto } from './dto/login.dto';
+import { CurrentUser } from './decorators/current.decorators';
+import { JwtRefreshGuard } from './guards/jwt-refresh.guard';
+
+const REFRESH_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'strict' as const,
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+};
+
+@Controller('auth')
+export class AuthController {
+  constructor(private readonly authService: AuthService) {}
+
+  @Public()
+  @Post('register')
+  async register(
+    @Body() dto: RegisterDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { refresh_token, ...data } = await this.authService.register(dto);
+    res.cookie('refresh_token', refresh_token, REFRESH_COOKIE_OPTIONS);
+    return { data, message: 'Registered successfully', statusCode: 201 };
+  }
+
+  @Public()
+  @Post('login')
+  @HttpCode(HttpStatus.OK)
+  async login(
+    @Body() dto: LoginDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { refresh_token, ...data } = await this.authService.login(dto);
+    res.cookie('refresh_token', refresh_token, REFRESH_COOKIE_OPTIONS);
+    return { data, message: 'Login successful', statusCode: 200 };
+  }
+
+  @Get('me')
+  getMe(@CurrentUser() user: any) {
+    return this.authService.getMe(user.id);
+  }
+
+  @Public()
+  @UseGuards(JwtRefreshGuard)
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  async refresh(@CurrentUser() user: any) {
+    return this.authService.refresh(user.id, user.email, user.role);
+  }
+
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  async logout(
+    @CurrentUser() user: any,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    await this.authService.logout(user.id);
+    res.clearCookie('refresh_token', { httpOnly: true, sameSite: 'strict' });
+    return { message: 'Logged out successfully', statusCode: 200 };
+  }
+}

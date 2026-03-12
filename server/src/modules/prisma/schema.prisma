@@ -1,0 +1,139 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums ───────────────────────────────────────
+enum Role {
+  CUSTOMER
+  STAFF
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  READY
+  SERVED
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  QR
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+// ─── Models ──────────────────────────────────────
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  name         String
+  phone        String?
+  role         Role     @default(CUSTOMER)
+  refreshToken String?  @map("refresh_token")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  orders Order[]
+
+  @@map("users")
+}
+
+model Category {
+  id           String     @id @default(uuid())
+  name         String     @unique
+  description  String?
+  displayOrder Int        @default(0) @map("display_order")
+  isActive     Boolean    @default(true) @map("is_active")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  menuItems MenuItem[]
+
+  @@map("categories")
+}
+
+model MenuItem {
+  id                   String   @id @default(uuid())
+  name                 String
+  description          String?
+  price                Decimal  @db.Decimal(10, 2)
+  imageUrl             String?  @map("image_url")
+  isAvailable          Boolean  @default(true) @map("is_available")
+  prepTimeMins         Int      @default(10) @map("prep_time_mins")
+  customisationOptions Json?    @map("customisation_options")
+  categoryId           String   @map("category_id")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  category   Category    @relation(fields: [categoryId], references: [id])
+  orderItems OrderItem[]
+
+  @@map("menu_items")
+}
+
+model Order {
+  id           String      @id @default(uuid())
+  orderNumber  String      @unique @map("order_number")
+  status       OrderStatus @default(PENDING)
+  tableNumber  String?     @map("table_number")
+  subtotal     Decimal     @db.Decimal(10, 2)
+  tax          Decimal     @db.Decimal(10, 2)
+  total        Decimal     @db.Decimal(10, 2)
+  notes        String?
+  userId       String      @map("user_id")
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  user       User        @relation(fields: [userId], references: [id])
+  orderItems OrderItem[]
+  payment    Payment?
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id               String   @id @default(uuid())
+  quantity         Int
+  unitPrice        Decimal  @db.Decimal(10, 2) @map("unit_price")
+  itemNameSnapshot String   @map("item_name_snapshot")
+  customisations   Json?
+  orderId          String   @map("order_id")
+  menuItemId       String   @map("menu_item_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  order    Order    @relation(fields: [orderId], references: [id])
+  menuItem MenuItem @relation(fields: [menuItemId], references: [id])
+
+  @@map("order_items")
+}
+
+model Payment {
+  id             String        @id @default(uuid())
+  amount         Decimal       @db.Decimal(10, 2)
+  method         PaymentMethod
+  status         PaymentStatus @default(PENDING)
+  transactionRef String?       @map("transaction_ref")
+  paidAt         DateTime?     @map("paid_at")
+  orderId        String        @unique @map("order_id")
+  createdAt      DateTime      @default(now()) @map("created_at")
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@map("payments")
+}
