@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>KDS WebSocket Test</title>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body>
+  <h2>🍽 Kitchen Display — Live Feed</h2>
+  <div id="status">Connecting...</div>
+  <div id="log" style="font-family: monospace; margin-top: 20px;"></div>
+
+  <script>
+    const socket = io('http://localhost:3001/kitchen');
+    const log    = document.getElementById('log');
+    const status = document.getElementById('status');
+
+    socket.on('connect', () => {
+      status.textContent = '✅ Connected — ID: ' + socket.id;
+      socket.emit('join:kitchen');
+    });
+
+    socket.on('joined', (data) => {
+      addLog('🏠 ' + data.message);
+    });
+
+    socket.on('order:new', (order) => {
+      addLog('🆕 NEW ORDER: ' + order.orderNumber +
+             ' | Table: ' + (order.tableNumber || 'N/A') +
+             ' | Total: $' + order.total +
+             ' | Items: ' + order.orderItems.length);
+    });
+
+    socket.on('order:statusUpdated', (order) => {
+      addLog('🔄 STATUS UPDATE: ' + order.orderNumber +
+             ' → ' + order.status);
+    });
+
+    socket.on('disconnect', () => {
+      status.textContent = '❌ Disconnected';
+    });
+
+    function addLog(msg) {
+      const time = new Date().toLocaleTimeString();
+      log.innerHTML = `<div>[${time}] ${msg}</div>` + log.innerHTML;
+    }
+  </script>
+</body>
+</html>
+```
+
+---
+
+## ✅ Full Test Sequence
+```
+1. Start your NestJS server
+2. Open test-ws.html in browser
+3. Verify "Connected" status shows ✅
+4. POST /api/orders → watch order:new fire in browser instantly ✅
+5. PATCH /api/orders/:id/status → CONFIRMED
+   → watch order:statusUpdated fire ✅
+6. PATCH status → PREPARING → watch again ✅
+7. PATCH status → READY → watch again ✅
+8. Open test-ws.html in TWO browser tabs
+   → place one order
+   → BOTH tabs should receive the event ✅
+9. Close one tab (disconnect)
+   → place another order
+   → remaining tab still receives it ✅

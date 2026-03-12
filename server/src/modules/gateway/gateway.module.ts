@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
-import { GatewayService } from './gateway.service';
-import { GatewayGateway } from './gateway.gateway';
+import { kitchenGateway } from './gateway.gateway';
 
 @Module({
-  providers: [GatewayGateway, GatewayService],
+  providers: [kitchenGateway],
+  exports: [kitchenGateway], // Export so OrdersService can inject it
 })
 export class GatewayModule {}

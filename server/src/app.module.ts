@@ -11,8 +11,9 @@ import { CategoriesModule } from './modules/categories/categories.module';
 import { MenuModule } from './modules/menu/menu.module';
 import { OrdersModule } from './modules/order/order.module';
 import { PaymentsModule } from './modules/payment/payment.module';
+import { GatewayModule } from './modules/gateway/gateway.module';
 @Module({
-  imports: [PrismaModule, ConfigModule.forRoot({isGlobal : true}) , PrismaModule , AuthModule , CategoriesModule, MenuModule ,OrdersModule , PaymentsModule],
+  imports: [PrismaModule, ConfigModule.forRoot({isGlobal : true}) , PrismaModule , AuthModule , CategoriesModule, MenuModule ,OrdersModule , PaymentsModule , GatewayModule],
   
   providers: [
     {provide : APP_GUARD , useClass : JwtAuthGuard},

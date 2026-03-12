@@ -8,6 +8,8 @@ import { UpdateOrderStatusDto } from './dto/update-order.dto';
 import { OrderStatus, Role } from '@prisma/client';
 import { generateOrderNumber } from './helpers/order-helper';
 
+import { kitchenGateway } from '../gateway/gateway.gateway';
+
 const TAX_RATE = Number(process.env.TAX_RATE) || 0.10; // 10% tax — move to config in production
 
 // Define valid status transitions — staff cannot skip steps
@@ -23,7 +25,9 @@ const STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
 
 @Injectable()
 export class OrdersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService ,
+    private readonly gateway : kitchenGateway
+  ) {}
 
   async create(dto: CreateOrderDto, userId: string) {
     // Step 1 — Fetch all menu items in one query (not N queries in a loop)
@@ -95,6 +99,10 @@ export class OrdersService {
         },
       });
     });
+
+    //Gateway : emit new order
+
+    this.gateway.emitNewOrder(order);
 
     return order;
   }
@@ -181,11 +189,19 @@ export class OrdersService {
       throw new ForbiddenException('Only admins can cancel confirmed orders');
     }
 
-    return this.prisma.order.update({
+    
+    const updated = await this.prisma.order.update({
       where: { id },
       data: { status: dto.status },
       include: { orderItems: true },
     });
+
+    //gateway : fire event after successful DB update
+
+    this.gateway.emitStatusUpdate(updated)
+
+
+    return updated ;
   }
 
   async cancel(id: string, userId: string, userRole: Role) {

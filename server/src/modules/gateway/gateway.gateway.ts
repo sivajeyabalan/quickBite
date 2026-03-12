@@ -1,34 +1,46 @@
-import { WebSocketGateway, SubscribeMessage, MessageBody } from '@nestjs/websockets';
+import { WebSocketGateway, SubscribeMessage, MessageBody, OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect, WebSocketServer, ConnectedSocket } from '@nestjs/websockets';
 import { GatewayService } from './gateway.service';
-import { CreateGatewayDto } from './dto/create-gateway.dto';
-import { UpdateGatewayDto } from './dto/update-gateway.dto';
+import { Server, Socket } from 'socket.io';
+import { Logger } from '@nestjs/common';
 
-@WebSocketGateway()
-export class GatewayGateway {
-  constructor(private readonly gatewayService: GatewayService) {}
 
-  @SubscribeMessage('createGateway')
-  create(@MessageBody() createGatewayDto: CreateGatewayDto) {
-    return this.gatewayService.create(createGatewayDto);
+@WebSocketGateway({
+  cors : {
+    origin: '*',
+  },
+  namespace: '/kitchen'
+})
+export class kitchenGateway implements OnGatewayInit , OnGatewayConnection , OnGatewayDisconnect{
+  
+  @WebSocketServer()
+  server : Server
+
+  private logger = new Logger('KitchenGateway')
+  afterInit() {
+    this.logger.log('Kitchen WebSocket Gateway initialised')
   }
 
-  @SubscribeMessage('findAllGateway')
-  findAll() {
-    return this.gatewayService.findAll();
+  handleConnection(client: Socket) {
+    this.logger.log(`client Connected : ${client.id}`)
+  }
+  handleDisconnect(client: Socket) {
+    this.logger.log(`Client Disconnected : ${client.id}`)
+  }
+  
+  emitNewOrder(order : any){
+    this.logger.log(`Emitting order:new -> ${order.id}`)
+    this.server.emit('order:new', order)
   }
 
-  @SubscribeMessage('findOneGateway')
-  findOne(@MessageBody() id: number) {
-    return this.gatewayService.findOne(id);
+  emitStatusUpdate(order : any){
+    this.logger.log(`Emitting order : statusUpdated -> ${order.id} -> ${order.status}`)
+    this.server.emit('order:statusUpdated',order)
   }
 
-  @SubscribeMessage('updateGateway')
-  update(@MessageBody() updateGatewayDto: UpdateGatewayDto) {
-    return this.gatewayService.update(updateGatewayDto.id, updateGatewayDto);
-  }
-
-  @SubscribeMessage('removeGateway')
-  remove(@MessageBody() id: number) {
-    return this.gatewayService.remove(id);
+  @SubscribeMessage('join:kitchen')
+  handleJoinKitchen(@ConnectedSocket() client : Socket){
+    client.join('kitchen-room')
+    this.logger.log(`Client ${client.id} joined kitchen room`)
+    client.emit('joined', {message : 'You are now in the Kitchen room'})
   }
 }
