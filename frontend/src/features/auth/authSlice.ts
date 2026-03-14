@@ -7,6 +7,7 @@ interface AuthState {
     accessToken: string | null;
     loading: boolean;
     error: string | null;
+    restoring: boolean;
 }
 
 interface ApiEnvelope<T> {
@@ -20,8 +21,13 @@ interface AuthPayload {
     access_token: string;
 }
 
+interface RefreshPayload {
+    access_token: string;
+}
+
 type AuthResponse = ApiEnvelope<AuthPayload>;
 type MeResponse = ApiEnvelope<User> | User;
+type RefreshResponse = ApiEnvelope<RefreshPayload> | RefreshPayload;
 
 const isApiEnvelope = <T>(value: unknown): value is ApiEnvelope<T> => {
     return Boolean(value) && typeof value === 'object' && 'data' in (value as object);
@@ -32,6 +38,7 @@ const initialState: AuthState = {
     accessToken: null,
     loading : false,
     error : null,
+    restoring: true,
 }
 
 export const loginThunk = createAsyncThunk<AuthResponse, { email: string; password: string }, { rejectValue: string }>(
@@ -71,6 +78,18 @@ export const getMeThunk = createAsyncThunk<MeResponse, void, { rejectValue: stri
         } catch (err: unknown){
             const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
             return rejectWithValue(message || 'Failed to load user');
+        }
+    }
+)
+
+export const refreshThunk = createAsyncThunk<RefreshResponse, void, { rejectValue: string }>(
+    'auth/refresh', async(_, { rejectWithValue }) => {
+        try {
+            const res = await api.post<RefreshResponse>('auth/refresh', {});
+            return res.data;
+        } catch (err: unknown){
+            const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+            return rejectWithValue(message || 'Failed to refresh session');
         }
     }
 )
@@ -130,6 +149,32 @@ const authSlice = createSlice({
             .addCase(getMeThunk.fulfilled, (state, action) => {
                 const payload = action.payload;
                 state.user = isApiEnvelope<User>(payload) ? payload.data : payload;
+                state.restoring = false;
+            });
+
+            builder
+            .addCase(getMeThunk.rejected, (state, action) => {
+                state.user = null;
+                state.accessToken = null;
+                state.error = action.payload as string;
+                state.restoring = false;
+            });
+
+            builder
+            .addCase(refreshThunk.pending, (state) => {
+                state.restoring = true;
+            })
+            .addCase(refreshThunk.fulfilled, (state, action) => {
+                const payload = action.payload;
+                const data = isApiEnvelope<RefreshPayload>(payload) ? payload.data : payload;
+                state.accessToken = data.access_token;
+                state.error = null;
+            })
+            .addCase(refreshThunk.rejected, (state, action) => {
+                state.accessToken = null;
+                state.user = null;
+                state.error = action.payload as string;
+                state.restoring = false;
             });
 
           builder
