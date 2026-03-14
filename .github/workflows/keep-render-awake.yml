@@ -10,4 +10,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Ping health endpoint
-        run: curl -fsS https://quickbite-bfwl.onrender.com/health > /dev/null
+        run: curl -fsS https://quickbite-bfwl.onrender.com/docs > /dev/null
