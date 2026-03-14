@@ -5,10 +5,10 @@ import { getMeThunk } from './features/auth/authSlice';
 import type { AppDispatch, RootState } from './app/store';
 
 import ProtectedRoute from './components/layout/ProtectedRoute';
-import { Navbar } from './components/layout/Navbar';
+import  Navbar  from './components/layout/Navbar';
 
-import { LoginPage } from './features/auth/LoginPage';
-import { RegisterPage } from './features/auth/Register';
+import LoginPage from './features/auth/LoginPage';
+import  RegisterPage from './features/auth/Register';
 import MenuPage from './features/menu/MenuPage';
 import OrdersPage from './features/orders/OrdersPage';
 import OrderTrackingPage from './features/orders/OrderTrackingPage';
@@ -18,7 +18,7 @@ import CartDrawer from './features/cart/CartDrawer';
 
 export default function App() {
   const dispatch   = useDispatch<AppDispatch>();
-  const { user, accessToken } = useSelector((s: RootState) => s.auth);
+  const { accessToken } = useSelector((s: RootState) => s.auth);
 
   // On app load — try to restore session via refresh cookie
   useEffect(() => {
