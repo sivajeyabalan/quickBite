@@ -131,7 +131,9 @@ export class OrdersService {
         ...dateFilter,
       },
       include: {
-        orderItems: true,
+        orderItems: {
+          include: { menuItem: { select: { id: true, name: true, imageUrl: true } } },
+        },
         payment: true,
         user: { select: { id: true, name: true, email: true } },
       },

@@ -37,10 +37,11 @@ export interface MenuItem {
 
 export interface OrderItem {
   id:               string;
+  menuItemId:       string;
   quantity:         number;
   unitPrice:        string;
   itemNameSnapshot: string;
-  customisations:   Record<string, string[]>;
+  customisations:   Record<string, string>;
   menuItem?:        { id: string; name: string; imageUrl?: string };
 }
 
