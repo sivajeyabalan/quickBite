@@ -9,6 +9,7 @@ import { LoggingInterceptor } from './common/Interceptors/Logging.interceptors';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const frontendUrl = process.env.FRONTEND_URL?.trim();
 
   app.use(cookieParser());
   app.setGlobalPrefix('api');
@@ -20,8 +21,8 @@ async function bootstrap() {
   }));
 
   app.enableCors({
-    origin: 'http://localhost:5173',
-    credentials: true,
+    origin: frontendUrl || '*',
+    credentials: Boolean(frontendUrl),
   });
 
    app.useGlobalFilters(new GlobalExceptionFilter());
