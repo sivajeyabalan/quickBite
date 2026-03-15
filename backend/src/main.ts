@@ -4,6 +4,8 @@ import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
+import { GlobalExceptionFilter } from './common/filters/Global-exception.filters';
+import { LoggingInterceptor } from './common/Interceptors/Logging.interceptors';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -21,6 +23,10 @@ async function bootstrap() {
     origin: 'http://localhost:5173',
     credentials: true,
   });
+
+   app.useGlobalFilters(new GlobalExceptionFilter());
+   app.useGlobalInterceptors(new LoggingInterceptor());
+
 
   // ─── Swagger ────────────────────────────────────────────────────
   const config = new DocumentBuilder()
