@@ -1,0 +1,186 @@
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import api from '../../../api/axios';
+import type { Order, OrderStatus } from '../../../types';
+import Spinner from '../../../components/ui/Spinner';
+
+const STATUS_OPTIONS: OrderStatus[] = [
+  'PENDING', 'CONFIRMED', 'PREPARING',
+  'READY', 'SERVED', 'COMPLETED', 'CANCELLED',
+];
+
+const STATUS_COLORS: Record<OrderStatus, string> = {
+  PENDING:   'bg-yellow-100 text-yellow-700',
+  CONFIRMED: 'bg-blue-100   text-blue-700',
+  PREPARING: 'bg-purple-100 text-purple-700',
+  READY:     'bg-green-100  text-green-700',
+  SERVED:    'bg-teal-100   text-teal-700',
+  COMPLETED: 'bg-gray-100   text-gray-600',
+  CANCELLED: 'bg-red-100    text-red-600',
+};
+
+const fetchAllOrders = async (status?: string, date?: string) => {
+  const params: Record<string, string> = {};
+  if (status) params.status = status;
+  if (date)   params.date   = date;
+  const res = await api.get('/orders', { params });
+  return res.data.data ?? res.data;
+};
+
+export default function OrdersTable() {
+  const queryClient = useQueryClient();
+  const navigate    = useNavigate();
+
+  const [filterStatus, setFilterStatus] = useState('');
+  const [filterDate,   setFilterDate]   = useState('');
+
+  const { data: orders = [], isLoading } = useQuery({
+    queryKey: ['admin-orders', filterStatus, filterDate],
+    queryFn:  () => fetchAllOrders(filterStatus, filterDate),
+  });
+
+  const statusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: OrderStatus }) =>
+      api.patch(`/orders/${id}/status`, { status }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
+      toast.success('Status updated');
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Failed to update status');
+    },
+  });
+
+  if (isLoading) return (
+    <div className="flex justify-center py-20"><Spinner size="lg" /></div>
+  );
+
+  return (
+    <div>
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3 mb-5">
+        <select
+          value={filterStatus}
+          onChange={e => setFilterStatus(e.target.value)}
+          className="px-3 py-2 border border-gray-300 rounded-xl text-sm
+                     outline-none focus:ring-2 focus:ring-orange-400"
+        >
+          <option value="">All Statuses</option>
+          {STATUS_OPTIONS.map(s => (
+            <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
+
+        <input
+          type="date"
+          value={filterDate}
+          onChange={e => setFilterDate(e.target.value)}
+          className="px-3 py-2 border border-gray-300 rounded-xl text-sm
+                     outline-none focus:ring-2 focus:ring-orange-400"
+        />
+
+        {(filterStatus || filterDate) && (
+          <button
+            onClick={() => { setFilterStatus(''); setFilterDate(''); }}
+            className="px-3 py-2 text-sm text-gray-500 hover:text-gray-700
+                       border border-gray-300 rounded-xl transition"
+          >
+            Clear Filters
+          </button>
+        )}
+      </div>
+
+      {/* Table */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm
+                      overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 border-b border-gray-100">
+            <tr>
+              {['Order', 'Customer', 'Table', 'Items', 'Total',
+                'Status', 'Time', 'Actions'].map(h => (
+                <th key={h}
+                    className="text-left px-4 py-3 text-xs font-semibold
+                               text-gray-500 uppercase tracking-wide">
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50">
+            {orders.map((order: Order) => (
+              <tr key={order.id} className="hover:bg-gray-50 transition">
+                <td className="px-4 py-3 font-bold text-gray-800">
+                  {order.orderNumber}
+                </td>
+                <td className="px-4 py-3 text-gray-600">
+                  {order.user?.name || '—'}
+                </td>
+                <td className="px-4 py-3 text-gray-500">
+                  {order.tableNumber || '—'}
+                </td>
+                <td className="px-4 py-3 text-gray-500">
+                  {order.orderItems.length} item
+                  {order.orderItems.length !== 1 ? 's' : ''}
+                </td>
+                <td className="px-4 py-3 font-semibold text-orange-500">
+                  ${Number(order.total).toFixed(2)}
+                </td>
+                <td className="px-4 py-3">
+                  <span className={`px-2 py-0.5 rounded-full text-xs
+                                    font-medium ${STATUS_COLORS[order.status]}`}>
+                    {order.status}
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-gray-400 text-xs">
+                  {new Date(order.createdAt).toLocaleString()}
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => navigate(`/orders/${order.id}`)}
+                      className="text-xs px-2 py-1 border border-gray-300
+                                 rounded-lg hover:bg-gray-100 transition"
+                    >
+                      View
+                    </button>
+
+                    {/* Quick status advance */}
+                    {!['COMPLETED', 'CANCELLED'].includes(order.status) && (
+                      <select
+                        defaultValue=""
+                        onChange={e => {
+                          if (e.target.value) {
+                            statusMutation.mutate({
+                              id:     order.id,
+                              status: e.target.value as OrderStatus,
+                            });
+                            e.target.value = '';
+                          }
+                        }}
+                        className="text-xs border border-gray-300 rounded-lg
+                                   px-1 py-1 outline-none"
+                      >
+                        <option value="" disabled>Set status</option>
+                        {STATUS_OPTIONS.map(s => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        {orders.length === 0 && (
+          <div className="text-center py-12 text-gray-400 text-sm">
+            No orders found
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

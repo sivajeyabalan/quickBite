@@ -18,6 +18,8 @@ export class MenuService {
 
     return this.prisma.menuItem.findMany({
       where: {
+        deletedAt: null, // never expose soft-deleted items publicly
+
         // Only filter by availability if explicitly passed
         ...(available !== undefined && { isAvailable: available === 'true' }),
 
@@ -36,6 +38,17 @@ export class MenuService {
       },
       include: {
         category: { select: { id: true, name: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async findAllAdmin() {
+    // Returns ALL items including soft-deleted, with order reference count
+    return this.prisma.menuItem.findMany({
+      include: {
+        category: { select: { id: true, name: true } },
+        _count:   { select: { orderItems: true } },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -89,14 +102,29 @@ export class MenuService {
     });
   }
 
-  async softDelete(id: string) {
-    await this.findOne(id); // throws 404 if not found
+  async delete(id: string) {
+    // findUnique directly so we also find soft-deleted items
+    const item = await this.prisma.menuItem.findUnique({ where: { id } });
+    if (!item) throw new NotFoundException(`Menu item with id ${id} not found`);
 
-    // Never hard delete — order history references this item
-    return this.prisma.menuItem.update({
-      where: { id },
-      data: { isAvailable: false },
+    // Check how many order rows reference this item
+    const orderCount = await this.prisma.orderItem.count({
+      where: { menuItemId: id },
     });
+
+    if (orderCount > 0) {
+      // Soft delete — preserve order history integrity
+      const updated = await this.prisma.menuItem.update({
+        where: { id },
+        data:  { deletedAt: new Date(), isAvailable: false },
+        include: { category: { select: { id: true, name: true } } },
+      });
+      return { type: 'soft' as const, item: updated, orderCount };
+    }
+
+    // Hard delete — no references, safe to remove
+    await this.prisma.menuItem.delete({ where: { id } });
+    return { type: 'hard' as const, id };
   }
 
   async toggleAvailability(id: string) {

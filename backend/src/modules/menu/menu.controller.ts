@@ -28,6 +28,13 @@ export class MenuController {
     return this.menuService.findAll(query);
   }
 
+  @ApiOperation({ summary: 'Get ALL items including soft-deleted with order counts (admin only)' })
+  @Get('admin-list')
+  @Roles('ADMIN')
+  findAllAdmin() {
+    return this.menuService.findAllAdmin();
+  }
+
   @ApiOperation({ summary: 'Get a single menu item by ID (public)' })
   @ApiParam({ name: 'id', type: String, description: 'Menu item UUID' })
   @Get(':id')
@@ -59,11 +66,11 @@ export class MenuController {
     return this.menuService.toggleAvailability(id);
   }
 
-  @ApiOperation({ summary: 'Soft-delete a menu item (admin only)' })
+  @ApiOperation({ summary: 'Smart-delete: hard-delete if no order refs, soft-delete otherwise (admin only)' })
   @ApiParam({ name: 'id', type: String, description: 'Menu item UUID' })
   @Delete(':id')
   @Roles('ADMIN')
   remove(@Param('id') id: string) {
-    return this.menuService.softDelete(id);
+    return this.menuService.delete(id);
   }
 }

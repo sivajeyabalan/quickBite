@@ -33,6 +33,8 @@ export interface MenuItem {
   prepTimeMins:         number;
   customisationOptions: Record<string, string[]>;
   category:             { id: string; name: string };
+  deletedAt?:           string | null;
+  _count?:              { orderItems: number };
 }
 
 export interface OrderItem {
