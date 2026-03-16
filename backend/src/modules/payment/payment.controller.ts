@@ -1,10 +1,13 @@
-import { Controller, Get, Post, Body, Param, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseGuards, Req, Headers } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam, ApiResponse } from '@nestjs/swagger';
+import type { RawBodyRequest } from '@nestjs/common';
+import type { Request } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { PaymentsService } from './payment.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { Roles } from '../auth/decorators/roles.decorators';
+import { Public } from '../auth/decorators/public.decorators';
 
 @ApiTags('Payments')
 @ApiBearerAuth('access-token')
@@ -18,6 +21,34 @@ export class PaymentsController {
   @Post()
   create(@Body() dto: CreatePaymentDto) {
     return this.paymentsService.create(dto);
+  }
+
+  @Post('stripe/intent')
+  createStripeIntent(
+    @Body('orderId') orderId: string,
+    @Body('method') method?: 'CARD' | 'QR',
+  ) {
+    return this.paymentsService.createStripePaymentIntent(
+      orderId,
+      method,
+    );
+  }
+
+  @Post('stripe/sync/:orderId')
+  syncStripeStatus(@Param('orderId') orderId: string) {
+    return this.paymentsService.syncStripePaymentStatus(orderId);
+  }
+
+  @Post('stripe/webhook')
+  @Public()
+  stripeWebhook(
+    @Req() req: RawBodyRequest<Request>,
+    @Headers('stripe-signature') signature: string,
+  ) {
+    return this.paymentsService.handleStripeWebhook(
+      req.rawBody!,
+      signature,
+    );
   }
 
   @ApiOperation({ summary: 'Get all payments (admin only)' })

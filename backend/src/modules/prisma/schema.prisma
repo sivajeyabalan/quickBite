@@ -130,6 +130,7 @@ model Payment {
   method         PaymentMethod
   status         PaymentStatus @default(PENDING)
   transactionRef String?       @map("transaction_ref")
+  stripePaymentIntentId String? @map("stripe_payment_intent_id")
   paidAt         DateTime?     @map("paid_at")
   orderId        String        @unique @map("order_id")
   createdAt      DateTime      @default(now()) @map("created_at")

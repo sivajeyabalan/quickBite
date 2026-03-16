@@ -1,11 +1,13 @@
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { useSocket } from '../../hooks/useSocket';
 import { useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import type { Order, OrderStatus } from '../../types';
 import Spinner from '../../components/ui/Spinner';
+import PaymentPanel from './components/PaymentPanel';
 
 const STATUS_STEPS: OrderStatus[] = [
   'PENDING', 'CONFIRMED', 'PREPARING', 'READY', 'SERVED', 'COMPLETED',
@@ -28,6 +30,7 @@ const fetchOrder = async (id: string): Promise<Order> => {
 
 export default function OrderTrackingPage() {
   const { id }        = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const queryClient   = useQueryClient();
   const socket        = useSocket();
 
@@ -35,8 +38,14 @@ export default function OrderTrackingPage() {
     queryKey: ['order', id],
     queryFn:  () => fetchOrder(id!),
     enabled:  !!id,
-    // Poll every 30 seconds as fallback
-    refetchInterval: 30_000,
+    refetchInterval: (query) => {
+      const data = query.state.data as Order | undefined;
+      if (!data) return 3000;
+      const isPending =
+        data.payment?.status === 'PENDING' ||
+        (!data.payment && data.status !== 'CANCELLED');
+      return isPending ? 3000 : false;
+    },
   });
 
   // Live update via WebSocket
@@ -50,8 +59,54 @@ export default function OrderTrackingPage() {
       }
     });
 
-    return () => { socket.off('order:statusUpdated'); };
+    socket.on('payment:processing', (data: {
+      orderId: string;
+      message: string;
+    }) => {
+      if (data.orderId === id) {
+        toast.loading(data.message, {
+          id:       'upi-processing',
+          duration: 30000,
+        });
+      }
+    });
+
+    socket.on('payment:confirmed', (data: {
+      orderId: string;
+      orderNumber: string;
+      amount: number;
+    }) => {
+      if (data.orderId === id) {
+        toast.dismiss('upi-processing');
+        queryClient.invalidateQueries({ queryKey: ['order', id] });
+        toast.success(
+          `Payment of $${data.amount.toFixed(2)} confirmed!`,
+        );
+      }
+    });
+
+    socket.on('payment:failed', (data: { orderId: string }) => {
+      if (data.orderId === id) {
+        queryClient.invalidateQueries({ queryKey: ['order', id] });
+        toast.error('Payment failed. Please try again.');
+      }
+    });
+
+    return () => {
+      socket.off('order:statusUpdated');
+      socket.off('payment:processing');
+      socket.off('payment:confirmed');
+      socket.off('payment:failed');
+    };
   }, [socket, id, queryClient]);
+
+  useEffect(() => {
+    const paymentReturn = searchParams.get('payment');
+    if (paymentReturn === 'complete') {
+      queryClient.invalidateQueries({ queryKey: ['order', id] });
+      window.history.replaceState({}, '', `/orders/${id}`);
+    }
+  }, [searchParams, id, queryClient]);
 
   if (isLoading) return (
     <div className="flex justify-center items-center min-h-[60vh]">
@@ -182,25 +237,8 @@ export default function OrderTrackingPage() {
         </div>
       </div>
 
-      {/* Payment Status */}
-      {order.payment && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <h2 className="font-semibold text-gray-700 mb-2">Payment</h2>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Method</span>
-            <span className="font-medium">{order.payment.method}</span>
-          </div>
-          <div className="flex justify-between text-sm mt-1">
-            <span className="text-gray-500">Status</span>
-            <span className={`font-medium ${
-              order.payment.status === 'PAID'
-                ? 'text-green-500'
-                : 'text-orange-500'
-            }`}>
-              {order.payment.status}
-            </span>
-          </div>
-        </div>
+      {order.status !== 'PENDING' && (
+        <PaymentPanel order={order} />
       )}
     </div>
   );

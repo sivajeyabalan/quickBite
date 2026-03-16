@@ -8,7 +8,7 @@ import { GlobalExceptionFilter } from './common/filters/Global-exception.filters
 import { LoggingInterceptor } from './common/Interceptors/Logging.interceptors';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { rawBody: true });
   const frontendUrl = process.env.FRONTEND_URL?.trim();
 
   app.use(cookieParser());

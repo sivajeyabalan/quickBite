@@ -37,6 +37,32 @@ export class kitchenGateway implements OnGatewayInit , OnGatewayConnection , OnG
     this.server.emit('order:statusUpdated',order)
   }
 
+  emitPaymentConfirmed(data: {
+    orderId: string;
+    orderNumber: string;
+    amount: number;
+  }) {
+    this.logger.log(`Emitting payment:confirmed -> ${data.orderNumber}`)
+    this.server.emit('payment:confirmed', data)
+  }
+
+  emitPaymentFailed(data: {
+    orderId: string;
+    orderNumber: string;
+  }) {
+    this.logger.log(`Emitting payment:failed -> ${data.orderNumber}`)
+    this.server.emit('payment:failed', data)
+  }
+
+  emitPaymentProcessing(data: {
+    orderId: string;
+    orderNumber: string;
+    message: string;
+  }) {
+    this.logger.log(`Emitting payment:processing -> ${data.orderNumber}`)
+    this.server.emit('payment:processing', data)
+  }
+
   @SubscribeMessage('join:kitchen')
   handleJoinKitchen(@ConnectedSocket() client : Socket){
     client.join('kitchen-room')

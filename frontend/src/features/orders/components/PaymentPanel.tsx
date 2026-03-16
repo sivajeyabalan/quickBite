@@ -1,0 +1,187 @@
+import { useState } from 'react';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements } from '@stripe/react-stripe-js';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
+import api from '../../../api/axios';
+import type { Order, PaymentMethod } from '../../../types';
+import StripePaymentForm from './StripePaymentForm';
+import Spinner from '../../../components/ui/Spinner';
+
+const stripePromise = loadStripe(
+  import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY,
+);
+
+export default function PaymentPanel({ order }: { order: Order }) {
+  const queryClient = useQueryClient();
+  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>('CASH');
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [isLocallyPaid, setIsLocallyPaid] = useState(false);
+
+  const cashMutation = useMutation({
+    mutationFn: (method: PaymentMethod) =>
+      api.post('/payments', { orderId: order.id, method }),
+    onSuccess: () => {
+      toast.success('Payment recorded!');
+      queryClient.invalidateQueries({ queryKey: ['order', order.id] });
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Payment failed');
+    },
+  });
+
+  const intentMutation = useMutation({
+    mutationFn: (method: 'CARD' | 'QR') =>
+      api.post('/payments/stripe/intent', {
+        orderId: order.id,
+        method,
+      }),
+    onSuccess: (res) => {
+      setClientSecret(
+        res.data.clientSecret ?? res.data.data?.clientSecret,
+      );
+    },
+    onError: (err: any) => {
+      const message = err.response?.data?.message || 'Failed to initialise payment';
+      if (String(message).toLowerCase().includes('already completed')) {
+        queryClient.invalidateQueries({ queryKey: ['order', order.id] });
+      }
+      toast.error(message);
+    },
+  });
+
+  const handlePaymentSuccess = () => {
+    setIsLocallyPaid(true);
+    queryClient.invalidateQueries({ queryKey: ['order', order.id] });
+    setClientSecret(null);
+  };
+
+  if (isLocallyPaid || (order.payment && order.payment.status === 'PAID')) {
+    return (
+      <div className="bg-white rounded-2xl shadow-sm border
+                      border-gray-100 p-6">
+        <h2 className="font-semibold text-gray-700 mb-4">
+          Payment
+        </h2>
+        <div className="bg-green-50 border border-green-200
+                        rounded-xl p-4 space-y-2">
+          <p className="text-green-700 font-semibold">
+            Payment Confirmed
+          </p>
+          <div className="text-sm text-gray-600 space-y-1">
+            <div className="flex justify-between">
+              <span>Amount</span>
+              <span className="font-bold">
+                ${Number(order.payment?.amount ?? order.total).toFixed(2)}
+              </span>
+            </div>
+            {order.payment?.method && (
+              <div className="flex justify-between">
+                <span>Method</span>
+                <span>{order.payment.method}</span>
+              </div>
+            )}
+            <div className="flex justify-between">
+              <span>Status</span>
+              <span className="text-green-600 font-medium">
+                {order.payment?.status ?? 'PAID'}
+              </span>
+            </div>
+            {order.payment?.paidAt && (
+              <div className="flex justify-between">
+                <span>Paid at</span>
+                <span>
+                  {new Date(order.payment.paidAt).toLocaleTimeString()}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (order.status === 'CANCELLED') {
+    return (
+      <div className="bg-white rounded-2xl shadow-sm border
+                      border-gray-100 p-6">
+        <h2 className="font-semibold text-gray-700 mb-2">Payment</h2>
+        <p className="text-sm text-red-500">
+          This order was cancelled. No payment required.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border
+                    border-gray-100 p-6">
+      <h2 className="font-semibold text-gray-700 mb-1">Payment</h2>
+      <p className="text-sm text-gray-400 mb-5">
+        Total due:{' '}
+        <span className="text-orange-500 font-bold text-base">
+          ${Number(order.total).toFixed(2)}
+        </span>
+      </p>
+
+      {clientSecret ? (
+        <Elements stripe={stripePromise} options={{ clientSecret }}>
+          <StripePaymentForm
+            orderId={order.id}
+            onSuccess={handlePaymentSuccess}
+          />
+        </Elements>
+      ) : (
+        <>
+          <div className="grid grid-cols-3 gap-2 mb-5">
+            {[
+              { value: 'CASH', label: 'Cash', icon: '💵' },
+              { value: 'CARD', label: 'Card / Google Pay', icon: '💳' },
+              { value: 'QR', label: 'UPI / GPay', icon: '📱' },
+            ].map(m => (
+              <button
+                key={m.value}
+                onClick={() =>
+                  setSelectedMethod(m.value as PaymentMethod)
+                }
+                className={`flex flex-col items-center gap-1.5 py-3
+                            rounded-xl border-2 text-xs font-medium
+                            transition
+                  ${selectedMethod === m.value
+                    ? 'border-orange-500 bg-orange-50 text-orange-600'
+                    : 'border-gray-200 text-gray-600'
+                  }`}
+              >
+                <span className="text-2xl">{m.icon}</span>
+                {m.label}
+              </button>
+            ))}
+          </div>
+
+          <button
+            disabled={
+              cashMutation.isPending || intentMutation.isPending
+            }
+            onClick={() => {
+              if (selectedMethod === 'CARD' || selectedMethod === 'QR') {
+                intentMutation.mutate(selectedMethod);
+              } else {
+                cashMutation.mutate(selectedMethod);
+              }
+            }}
+            className="w-full bg-orange-500 hover:bg-orange-600
+                       text-white font-semibold py-3 rounded-xl
+                       transition disabled:opacity-50"
+          >
+            {cashMutation.isPending || intentMutation.isPending
+              ? <Spinner size="sm" />
+              : `Pay $${Number(order.total).toFixed(2)} via ${
+                selectedMethod === 'QR' ? 'UPI / Google Pay' : selectedMethod
+              }`
+            }
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
