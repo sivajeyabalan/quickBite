@@ -3,13 +3,18 @@ import { io, Socket } from 'socket.io-client';
 
 let socketInstance: Socket | null = null;
 
+const rawApiUrl = import.meta.env.VITE_API_URL?.trim();
+const normalizedApiUrl = rawApiUrl?.replace(/\/$/, '');
+const apiOrigin = normalizedApiUrl?.replace(/\/api$/, '');
+const SOCKET_BASE_URL = apiOrigin || window.location.origin;
+
 export function useSocket(): Socket | null {
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
     // Reuse existing connection — don't create new socket on every render
     if (!socketInstance) {
-      socketInstance = io('http://localhost:3001/kitchen', {
+      socketInstance = io(`${SOCKET_BASE_URL}/kitchen`, {
         transports:       ['websocket', 'polling'],
         withCredentials:  false,
       });

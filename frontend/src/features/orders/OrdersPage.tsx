@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import api from '../../api/axios';
 import type { Order, OrderStatus } from '../../types';
 import { addItem, toggleCart } from '../cart/cardSlice'
-import type { AppDispatch } from '../../app/store';
+import type { AppDispatch, RootState } from '../../app/store';
 import Spinner from '../../components/ui/Spinner';
 import toast from 'react-hot-toast';
 
@@ -26,6 +26,10 @@ const fetchOrders = async (): Promise<Order[]> => {
 export default function OrdersPage() {
   const navigate  = useNavigate();
   const dispatch  = useDispatch<AppDispatch>();
+  const user      = useSelector((s: RootState) => s.auth.user);
+
+  const isAdminOrStaff = user?.role === 'ADMIN' || user?.role === 'STAFF';
+  const pageTitle = isAdminOrStaff ? 'All Orders' : 'My Orders';
 
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ['orders'],
@@ -55,7 +59,7 @@ export default function OrdersPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">My Orders</h1>
+      <h1 className="text-2xl font-bold text-gray-800 mb-6">{pageTitle}</h1>
 
       {orders.length === 0 ? (
         <div className="text-center py-20 text-gray-400">
@@ -77,6 +81,11 @@ export default function OrdersPage() {
                     {new Date(order.createdAt).toLocaleString()} ·
                     Table {order.tableNumber || 'N/A'}
                   </p>
+                  {isAdminOrStaff && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Ordered by: {order.user?.name || 'Unknown user'}
+                    </p>
+                  )}
                 </div>
                 <span className={`px-3 py-1 rounded-full text-xs font-semibold
                                   ${STATUS_COLORS[order.status]}`}>
