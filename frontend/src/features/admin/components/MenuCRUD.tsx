@@ -21,6 +21,10 @@ export default function MenuCRUD() {
   const [editItem,  setEditItem]  = useState<MenuItem | null>(null);
   const [form,      setForm]      = useState(EMPTY_FORM);
 
+  const [search,         setSearch]         = useState('');
+  const [filterCategory, setFilterCategory] = useState('');
+  const [filterStatus,   setFilterStatus]   = useState<'all' | 'available' | 'unavailable' | 'deleted'>('all');
+
   const { data: items      = [], isLoading } = useQuery({
     queryKey: ['admin-menu'],
     queryFn:  fetchMenu,
@@ -91,6 +95,30 @@ export default function MenuCRUD() {
     },
   });
 
+  const uploadImageMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      return api.post('/menu/upload-image', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+    },
+    onSuccess: (res) => {
+      const imageUrl = res.data?.url ?? res.data?.data?.url;
+      if (!imageUrl) {
+        toast.error('Upload succeeded but no image URL was returned');
+        return;
+      }
+
+      setForm(prev => ({ ...prev, imageUrl }));
+      toast.success('Image uploaded');
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Image upload failed');
+    },
+  });
+
   // ── Helpers ─────────────────────────────────────
   const resetForm = () => {
     setForm(EMPTY_FORM);
@@ -125,6 +153,32 @@ export default function MenuCRUD() {
   };
 
   const isSaving = createMutation.isPending || updateMutation.isPending;
+
+  const filteredItems = (items as MenuItem[]).filter(item => {
+    const matchesSearch =
+      !search ||
+      item.name.toLowerCase().includes(search.toLowerCase()) ||
+      (item.description ?? '').toLowerCase().includes(search.toLowerCase());
+
+    const matchesCategory =
+      !filterCategory || item.category.id === filterCategory;
+
+    const matchesStatus =
+      filterStatus === 'all' ? true
+      : filterStatus === 'available'   ? (item.isAvailable && !item.deletedAt)
+      : filterStatus === 'unavailable' ? (!item.isAvailable && !item.deletedAt)
+      : !!item.deletedAt;
+
+    return matchesSearch && matchesCategory && matchesStatus;
+  });
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    uploadImageMutation.mutate(file);
+    e.target.value = '';
+  };
 
   if (isLoading) return (
     <div className="flex justify-center py-20"><Spinner size="lg" /></div>
@@ -231,6 +285,40 @@ export default function MenuCRUD() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg
                            text-sm outline-none focus:ring-2 focus:ring-orange-400"
               />
+              <div className="mt-2 flex items-center gap-3">
+                <label
+                  className="inline-flex items-center px-3 py-2 border border-gray-300
+                             rounded-lg text-xs font-medium text-gray-700 hover:bg-gray-50
+                             cursor-pointer transition"
+                >
+                  {uploadImageMutation.isPending
+                    ? 'Uploading...'
+                    : 'Upload to Cloudinary'}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/webp"
+                    onChange={handleImageUpload}
+                    disabled={uploadImageMutation.isPending}
+                    className="hidden"
+                  />
+                </label>
+                <span className="text-xs text-gray-400">
+                  JPG, PNG, WEBP · max 5MB
+                </span>
+              </div>
+              {form.imageUrl && (
+                <div className="mt-3">
+                  <img
+                    src={form.imageUrl}
+                    alt="Menu preview"
+                    className="h-28 w-28 object-cover rounded-lg border border-gray-200"
+                    onError={(e) => {
+                      const target = e.currentTarget;
+                      target.style.display = 'none';
+                    }}
+                  />
+                </div>
+              )}
             </div>
 
             {/* Description */}
@@ -292,6 +380,61 @@ export default function MenuCRUD() {
         </div>
       )}
 
+      {/* ── Filters ───────────────────────────── */}
+      <div className="flex flex-wrap gap-3 mb-4">
+        <input
+          type="text"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search by name or description…"
+          className="flex-1 min-w-[200px] px-3 py-2 border border-gray-300
+                     rounded-xl text-sm outline-none
+                     focus:ring-2 focus:ring-orange-400"
+        />
+
+        <select
+          value={filterCategory}
+          onChange={e => setFilterCategory(e.target.value)}
+          className="px-3 py-2 border border-gray-300 rounded-xl text-sm
+                     outline-none focus:ring-2 focus:ring-orange-400"
+        >
+          <option value="">All Categories</option>
+          {categories.map((cat: Category) => (
+            <option key={cat.id} value={cat.id}>{cat.name}</option>
+          ))}
+        </select>
+
+        <select
+          value={filterStatus}
+          onChange={e => setFilterStatus(e.target.value as typeof filterStatus)}
+          className="px-3 py-2 border border-gray-300 rounded-xl text-sm
+                     outline-none focus:ring-2 focus:ring-orange-400"
+        >
+          <option value="all">All</option>
+          <option value="available">Available</option>
+          <option value="unavailable">Sold Out</option>
+          <option value="deleted">Deleted</option>
+        </select>
+
+        {(search || filterCategory || filterStatus !== 'all') && (
+          <button
+            onClick={() => {
+              setSearch('');
+              setFilterCategory('');
+              setFilterStatus('all');
+            }}
+            className="px-3 py-2 text-sm text-gray-500 hover:text-gray-700
+                       border border-gray-300 rounded-xl transition"
+          >
+            Clear
+          </button>
+        )}
+
+        <span className="flex items-center text-xs text-gray-400 ml-auto">
+          {filteredItems.length} item{filteredItems.length !== 1 ? 's' : ''}
+        </span>
+      </div>
+
       {/* ── Items Table ───────────────────────── */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm
                       overflow-hidden">
@@ -309,7 +452,7 @@ export default function MenuCRUD() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
-            {items.map((item: MenuItem) => (
+            {filteredItems.map((item: MenuItem) => (
               <tr key={item.id}
                   className={`hover:bg-gray-50 transition ${item.deletedAt ? 'opacity-60' : ''}`}>
                 <td className="px-4 py-3">

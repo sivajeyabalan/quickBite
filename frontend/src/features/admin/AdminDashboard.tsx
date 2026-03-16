@@ -2,13 +2,15 @@ import { useState } from 'react';
 import MenuCRUD      from './components/MenuCRUD';
 import OrdersTable   from './components/OrdersTable';
 import Analytics     from './components/Analytics';
+import UsersManagement from './components/UsersManagement';
 
-type Tab = 'analytics' | 'menu' | 'orders';
+type Tab = 'analytics' | 'menu' | 'orders' | 'users';
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'analytics', label: '📊 Analytics'  },
   { key: 'menu',      label: '🍽 Menu CRUD'   },
   { key: 'orders',    label: '📋 Orders'      },
+  { key: 'users',     label: '👥 Users'       },
 ];
 
 export default function AdminDashboard() {
@@ -47,6 +49,7 @@ export default function AdminDashboard() {
       {activeTab === 'analytics' && <Analytics />}
       {activeTab === 'menu'      && <MenuCRUD />}
       {activeTab === 'orders'    && <OrdersTable />}
+      {activeTab === 'users'     && <UsersManagement />}
     </div>
   );
 }
