@@ -1,8 +1,21 @@
 import {
   Controller, Get, Post, Patch, Delete,
   Body, Param, Query, UseGuards,
+  HttpStatus,
+  ParseFilePipeBuilder,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiParam,
+  ApiQuery,
+  ApiBody,
+  ApiConsumes,
+} from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { MenuService } from './menu.service';
 import { CreateMenuItemDto } from './dto/create-menu.dto';
 import { UpdateMenuDto } from './dto/update-menu.dto';
@@ -10,13 +23,17 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorators';
 import { Public } from '../auth/decorators/public.decorators';
+import { CloudinaryService } from '../../common/cloudinary/cloudinary.service';
 
 @ApiTags('Menu')
 @ApiBearerAuth('access-token')
 @Controller('menu')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class MenuController {
-  constructor(private readonly menuService: MenuService) {}
+  constructor(
+    private readonly menuService: MenuService,
+    private readonly cloudinary: CloudinaryService,
+  ) {}
 
   @ApiOperation({ summary: 'Get all menu items — filterable by category, search, availability (public)' })
   @ApiQuery({ name: 'category', required: false, description: 'Filter by category UUID' })
@@ -48,6 +65,35 @@ export class MenuController {
   @Roles('ADMIN')
   create(@Body() dto: CreateMenuItemDto) {
     return this.menuService.create(dto);
+  }
+
+  @ApiOperation({ summary: 'Upload menu image to Cloudinary (admin only)' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+      required: ['file'],
+    },
+  })
+  @Post('upload-image')
+  @Roles('ADMIN')
+  @UseInterceptors(FileInterceptor('file'))
+  uploadImage(
+    @UploadedFile(
+      new ParseFilePipeBuilder()
+        .addFileTypeValidator({ fileType: 'image/(jpeg|jpg|png|webp)' })
+        .addMaxSizeValidator({ maxSize: 5 * 1024 * 1024 })
+        .build({ errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY }),
+    )
+    file: Express.Multer.File,
+  ) {
+    return this.cloudinary.uploadImage(file);
   }
 
   @ApiOperation({ summary: 'Update a menu item (admin only)' })

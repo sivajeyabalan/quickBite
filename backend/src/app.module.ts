@@ -5,6 +5,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './modules/auth/auth.module';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 
 import { RolesGuard } from './modules/auth/guards/roles.guard';
 import { CategoriesModule } from './modules/categories/categories.module';
@@ -12,10 +13,28 @@ import { MenuModule } from './modules/menu/menu.module';
 import { OrdersModule } from './modules/order/order.module';
 import { PaymentsModule } from './modules/payment/payment.module';
 import { GatewayModule } from './modules/gateway/gateway.module';
+import { UsersModule } from './modules/users/users.module';
 @Module({
-  imports: [PrismaModule, ConfigModule.forRoot({isGlobal : true}) , PrismaModule , AuthModule , CategoriesModule, MenuModule ,OrdersModule , PaymentsModule , GatewayModule],
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    ThrottlerModule.forRoot([
+      {
+        ttl: Number(process.env.THROTTLE_TTL ?? 60),
+        limit: Number(process.env.THROTTLE_LIMIT ?? 100),
+      },
+    ]),
+    PrismaModule,
+    AuthModule,
+    UsersModule,
+    CategoriesModule,
+    MenuModule,
+    OrdersModule,
+    PaymentsModule,
+    GatewayModule,
+  ],
   
   providers: [
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
     {provide : APP_GUARD , useClass : JwtAuthGuard},
     {provide : APP_GUARD , useClass : RolesGuard},
   ],
