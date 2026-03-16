@@ -9,7 +9,14 @@ import { LoggingInterceptor } from './common/Interceptors/Logging.interceptors';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
-  const frontendUrl = process.env.FRONTEND_URL?.trim();
+  const frontendUrls = (
+    process.env.FRONTEND_URLS
+    || process.env.FRONTEND_URL
+    || 'http://localhost:5173'
+  )
+    .split(',')
+    .map((url) => url.trim())
+    .filter(Boolean);
 
   app.use(cookieParser());
   app.setGlobalPrefix('api');
@@ -21,8 +28,30 @@ async function bootstrap() {
   }));
 
   app.enableCors({
-    origin: frontendUrl || '*',
-    credentials: Boolean(frontendUrl),
+    origin: (origin, callback) => {
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+
+      const isConfigured = frontendUrls.includes(origin);
+
+      let isVercelPreview = false;
+      try {
+        const hostname = new URL(origin).hostname;
+        isVercelPreview = hostname.endsWith('.vercel.app');
+      } catch {
+        isVercelPreview = false;
+      }
+
+      if (isConfigured || isVercelPreview) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error(`CORS blocked for origin: ${origin}`), false);
+    },
+    credentials: true,
   });
 
    app.useGlobalFilters(new GlobalExceptionFilter());

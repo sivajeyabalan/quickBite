@@ -12,11 +12,28 @@ import { kitchenGateway } from '../gateway/gateway.gateway';
 
 @Injectable()
 export class PaymentsService {
+  private static readonly STRIPE_MIN_USD = 0.5;
+  private static readonly STRIPE_MIN_INR = 50;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly stripe: StripeService,
     private readonly gateway: kitchenGateway,
   ) {}
+
+  private validateStripeMinimum(amount: number, currency: 'usd' | 'inr') {
+    if (currency === 'usd' && amount < PaymentsService.STRIPE_MIN_USD) {
+      throw new BadRequestException(
+        `Minimum card payment amount is $${PaymentsService.STRIPE_MIN_USD.toFixed(2)}.`,
+      );
+    }
+
+    if (currency === 'inr' && amount < PaymentsService.STRIPE_MIN_INR) {
+      throw new BadRequestException(
+        `Minimum UPI payment amount is ₹${PaymentsService.STRIPE_MIN_INR}. Add more items or choose Cash/Card.`,
+      );
+    }
+  }
 
   async create(dto: CreatePaymentDto) {
     // Step 1 — Verify order exists
@@ -130,6 +147,54 @@ export class PaymentsService {
           order.payment.stripePaymentIntentId,
         );
 
+        if (existingIntent.status === 'succeeded') {
+          await this.prisma.payment.update({
+            where: { id: order.payment.id },
+            data: {
+              status: PaymentStatus.PAID,
+              paidAt: order.payment.paidAt ?? new Date(),
+              transactionRef: existingIntent.id,
+            },
+          });
+
+          await this.prisma.order.update({
+            where: { id: order.id },
+            data: { status: OrderStatus.CONFIRMED },
+          });
+
+          throw new ConflictException('Payment already completed for this order');
+        }
+
+        if (existingIntent.status === 'canceled') {
+          const resumeMethod = method ?? (order.payment.method === 'QR' ? 'QR' : 'CARD');
+          const currency = resumeMethod === 'QR' ? 'inr' : 'usd';
+          const orderAmount = Number(order.total);
+
+          this.validateStripeMinimum(orderAmount, currency);
+
+          const newIntent = await this.stripe.createPaymentIntent(
+            orderAmount,
+            currency,
+            { orderId: order.id, orderNumber: order.orderNumber },
+          );
+
+          await this.prisma.payment.update({
+            where: { id: order.payment.id },
+            data: {
+              method: resumeMethod,
+              stripePaymentIntentId: newIntent.id,
+              status: PaymentStatus.PENDING,
+            },
+          });
+
+          return {
+            clientSecret:       newIntent.client_secret,
+            paymentIntentId:    newIntent.id,
+            amount:             Number(order.total),
+            paymentMethodTypes: newIntent.payment_method_types,
+          };
+        }
+
         if (!existingIntent.client_secret) {
           throw new BadRequestException('Payment session could not be resumed');
         }
@@ -151,9 +216,12 @@ export class PaymentsService {
     // Use automatic_payment_methods (required by Payment Element).
     // For QR/UPI use INR — Stripe will surface UPI automatically for INR.
     const currency = method === 'QR' ? 'inr' : 'usd';
+    const orderAmount = Number(order.total);
+
+    this.validateStripeMinimum(orderAmount, currency);
 
     const intent = await this.stripe.createPaymentIntent(
-      Number(order.total),
+      orderAmount,
       currency,
       { orderId: order.id, orderNumber: order.orderNumber },
     );

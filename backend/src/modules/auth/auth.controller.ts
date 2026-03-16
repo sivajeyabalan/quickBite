@@ -9,10 +9,13 @@ import { LoginDto } from './dto/login.dto';
 import { CurrentUser } from './decorators/current.decorators';
 import { JwtRefreshGuard } from './guards/jwt-refresh.guard';
 
+const isProduction = process.env.NODE_ENV === 'production';
+const refreshCookieSameSite: 'none' | 'lax' = isProduction ? 'none' : 'lax';
+
 const REFRESH_COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'strict' as const,
+  secure: isProduction,
+  sameSite: refreshCookieSameSite,
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
 };
 
@@ -76,7 +79,11 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     await this.authService.logout(user.id);
-    res.clearCookie('refresh_token', { httpOnly: true, sameSite: 'strict' });
+    res.clearCookie('refresh_token', {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: refreshCookieSameSite,
+    });
     return { message: 'Logged out successfully', statusCode: 200 };
   }
 }
