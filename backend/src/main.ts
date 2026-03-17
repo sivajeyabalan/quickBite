@@ -10,13 +10,34 @@ import { LoggingInterceptor } from './common/Interceptors/Logging.interceptors';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
   const frontendUrls = (
-    process.env.FRONTEND_URLS
-    || process.env.FRONTEND_URL
-    || 'http://localhost:5173'
+    process.env.FRONTEND_URLS ||
+    process.env.FRONTEND_URL ||
+    'http://localhost:5173'
   )
     .split(',')
     .map((url) => url.trim())
     .filter(Boolean);
+
+  // ✅ CORS must be FIRST before any other middleware
+  app.enableCors({
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+
+      const isConfigured = frontendUrls.includes(origin);
+      let isVercelPreview = false;
+      try {
+        isVercelPreview = new URL(origin).hostname.endsWith('.vercel.app');
+      } catch {
+        isVercelPreview = false;
+      }
+
+      if (isConfigured || isVercelPreview) return callback(null, true);
+      callback(new Error(`CORS blocked for origin: ${origin}`), false);
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+  });
 
   app.use(cookieParser());
   app.setGlobalPrefix('api');
@@ -26,33 +47,6 @@ async function bootstrap() {
     forbidNonWhitelisted: true,
     transform: true,
   }));
-
-  app.enableCors({
-    origin: (origin, callback) => {
-      if (!origin) {
-        callback(null, true);
-        return;
-      }
-
-      const isConfigured = frontendUrls.includes(origin);
-
-      let isVercelPreview = false;
-      try {
-        const hostname = new URL(origin).hostname;
-        isVercelPreview = hostname.endsWith('.vercel.app');
-      } catch {
-        isVercelPreview = false;
-      }
-
-      if (isConfigured || isVercelPreview) {
-        callback(null, true);
-        return;
-      }
-
-      callback(new Error(`CORS blocked for origin: ${origin}`), false);
-    },
-    credentials: true,
-  });
 
    app.useGlobalFilters(new GlobalExceptionFilter());
    app.useGlobalInterceptors(new LoggingInterceptor());
@@ -76,6 +70,7 @@ async function bootstrap() {
   // ────────────────────────────────────────────────────────────────
 
   await app.listen(process.env.PORT ?? 3001);
+  console.log(`Frontend url is ${frontendUrls}`)
   console.log(`🚀 Server running on http://localhost:3001/api`);
   console.log(`📖 Swagger docs at  http://localhost:3001/docs`);
 }
