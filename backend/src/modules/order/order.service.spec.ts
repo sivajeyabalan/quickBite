@@ -111,6 +111,39 @@ describe('OrdersService', () => {
 
   // ── Test 3 ────────────────────────────────────────
   describe('cancel', () => {
+    it('should allow customer to cancel a pending order and emit status update', async () => {
+      const updatedOrder = {
+        id: 'order-1',
+        status: OrderStatus.CANCELLED,
+        userId: 'user-1',
+        orderItems: [],
+      };
+
+      mockPrisma.order.findUnique.mockResolvedValue({
+        id: 'order-1',
+        status: OrderStatus.PENDING,
+        userId: 'user-1',
+      });
+      mockPrisma.order.update.mockResolvedValue(updatedOrder);
+
+      const result = await service.cancel('order-1', 'user-1', Role.CUSTOMER);
+
+      expect(result.status).toBe(OrderStatus.CANCELLED);
+      expect(mockGateway.emitStatusUpdate).toHaveBeenCalledWith(updatedOrder);
+    });
+
+    it('should throw BadRequestException when customer cancels confirmed order', async () => {
+      mockPrisma.order.findUnique.mockResolvedValue({
+        id: 'order-1',
+        status: OrderStatus.CONFIRMED,
+        userId: 'user-1',
+      });
+
+      await expect(
+        service.cancel('order-1', 'user-1', Role.CUSTOMER),
+      ).rejects.toThrow(BadRequestException);
+    });
+
     it('should throw BadRequestException when cancelling PREPARING order', async () => {
       mockPrisma.order.findUnique.mockResolvedValue({
         id:     'order-1',

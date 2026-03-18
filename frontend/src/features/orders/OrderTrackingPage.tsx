@@ -3,11 +3,14 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { useSocket } from '../../hooks/useSocket';
 import { useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import type { Order, OrderStatus } from '../../types';
 import Spinner from '../../components/ui/Spinner';
 import PaymentPanel from './components/PaymentPanel';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../../app/store';
 
 const STATUS_STEPS: OrderStatus[] = [
   'PENDING', 'CONFIRMED', 'PREPARING', 'READY', 'SERVED', 'COMPLETED',
@@ -33,6 +36,7 @@ export default function OrderTrackingPage() {
   const [searchParams] = useSearchParams();
   const queryClient   = useQueryClient();
   const socket        = useSocket();
+  const user          = useSelector((s: RootState) => s.auth.user);
 
   const { data: order, isLoading } = useQuery({
     queryKey: ['order', id],
@@ -45,6 +49,21 @@ export default function OrderTrackingPage() {
         data.payment?.status === 'PENDING' ||
         (!data.payment && data.status !== 'CANCELLED');
       return isPending ? 3000 : false;
+    },
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: async (orderId: string) => {
+      await api.delete(`/orders/${orderId}/cancel`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['order', id] });
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      toast.success('Order cancelled');
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || 'Failed to cancel order');
+      queryClient.invalidateQueries({ queryKey: ['order', id] });
     },
   });
 
@@ -121,6 +140,15 @@ export default function OrderTrackingPage() {
   const isCancelled = order.status === 'CANCELLED';
   const currentStep = STATUS_STEPS.indexOf(order.status);
 
+  const handleCancel = () => {
+    const confirmed = window.confirm(
+      `Cancel ${order.orderNumber}? You can only cancel before kitchen confirmation.`,
+    );
+
+    if (!confirmed) return;
+    cancelMutation.mutate(order.id);
+  };
+
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
 
@@ -144,6 +172,23 @@ export default function OrderTrackingPage() {
             {STATUS_LABELS[order.status]}
           </span>
         </div>
+
+        {user?.role === 'CUSTOMER' && order.status === 'PENDING' && (
+          <div className="mt-4">
+            <p className="text-xs text-gray-400 mb-2">
+              Cancelable until kitchen confirms
+            </p>
+            <button
+              onClick={handleCancel}
+              disabled={cancelMutation.isPending}
+              className="text-sm px-4 py-2 border border-red-300 text-red-600
+                         rounded-lg hover:bg-red-50 transition
+                         disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {cancelMutation.isPending ? 'Cancelling…' : 'Cancel Order'}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Status Stepper */}

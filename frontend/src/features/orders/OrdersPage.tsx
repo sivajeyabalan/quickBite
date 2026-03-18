@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import api from '../../api/axios';
@@ -26,6 +26,7 @@ const fetchOrders = async (): Promise<Order[]> => {
 export default function OrdersPage() {
   const navigate  = useNavigate();
   const dispatch  = useDispatch<AppDispatch>();
+  const queryClient = useQueryClient();
   const user      = useSelector((s: RootState) => s.auth.user);
 
   const isAdminOrStaff = user?.role === 'ADMIN' || user?.role === 'STAFF';
@@ -34,6 +35,20 @@ export default function OrdersPage() {
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ['orders'],
     queryFn:  fetchOrders,
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: async (orderId: string) => {
+      await api.delete(`/orders/${orderId}/cancel`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      toast.success('Order cancelled');
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || 'Failed to cancel order');
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+    },
   });
 
   const handleReorder = (order: Order) => {
@@ -49,6 +64,15 @@ export default function OrdersPage() {
     });
     dispatch(toggleCart());
     toast.success('Items added to cart');
+  };
+
+  const handleCancel = (order: Order) => {
+    const confirmed = window.confirm(
+      `Cancel ${order.orderNumber}? You can only cancel before kitchen confirmation.`,
+    );
+
+    if (!confirmed) return;
+    cancelMutation.mutate(order.id);
   };
 
   if (isLoading) return (
@@ -112,7 +136,24 @@ export default function OrdersPage() {
                 <span className="font-bold text-orange-500">
                   ${Number(order.total).toFixed(2)}
                 </span>
-                <div className="flex gap-2">
+                <div className="flex flex-col items-end gap-1">
+                  {!isAdminOrStaff && order.status === 'PENDING' && (
+                    <p className="text-[11px] text-gray-400">
+                      Cancelable until kitchen confirms
+                    </p>
+                  )}
+                  <div className="flex gap-2">
+                  {!isAdminOrStaff && order.status === 'PENDING' && (
+                    <button
+                      onClick={() => handleCancel(order)}
+                      disabled={cancelMutation.isPending}
+                      className="text-xs px-3 py-1.5 border border-red-300
+                                 text-red-600 rounded-lg hover:bg-red-50 transition
+                                 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {cancelMutation.isPending ? 'Cancelling…' : 'Cancel'}
+                    </button>
+                  )}
                   <button
                     onClick={() => handleReorder(order)}
                     className="text-xs px-3 py-1.5 border border-orange-400
@@ -127,6 +168,7 @@ export default function OrdersPage() {
                   >
                     Track
                   </button>
+                  </div>
                 </div>
               </div>
             </div>

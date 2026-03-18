@@ -218,17 +218,30 @@ export class OrdersService {
       throw new ForbiddenException('You cannot cancel this order');
     }
 
-    // Can only cancel if PENDING or CONFIRMED
-    const cancellable: OrderStatus[] = [OrderStatus.PENDING, OrderStatus.CONFIRMED];
-    if (!cancellable.includes(order.status)) {
+    if (userRole === Role.CUSTOMER && order.status !== OrderStatus.PENDING) {
       throw new BadRequestException(
-        `Cannot cancel an order that is ${order.status}`
+        'You can only cancel an order before it is confirmed'
       );
     }
 
-    return this.prisma.order.update({
+    // Staff/admin fallback route still supports PENDING/CONFIRMED cancellations
+    if (userRole !== Role.CUSTOMER) {
+      const cancellable: OrderStatus[] = [OrderStatus.PENDING, OrderStatus.CONFIRMED];
+      if (!cancellable.includes(order.status)) {
+        throw new BadRequestException(
+          `Cannot cancel an order that is ${order.status}`
+        );
+      }
+    }
+
+    const updated = await this.prisma.order.update({
       where: { id },
       data: { status: OrderStatus.CANCELLED },
+      include: { orderItems: true },
     });
+
+    this.gateway.emitStatusUpdate(updated);
+
+    return updated;
   }
 }
