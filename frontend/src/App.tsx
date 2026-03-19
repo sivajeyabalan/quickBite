@@ -73,6 +73,11 @@ export default function App() {
             <OrderTrackingPage />
           </ProtectedRoute>
         } />
+        <Route path="/ops/orders/:id" element={
+            <ProtectedRoute roles={['STAFF', 'ADMIN']}>
+            <OrderTrackingPage />
+          </ProtectedRoute>
+        } />
         <Route path="/addresses" element={
             <ProtectedRoute roles={['CUSTOMER']}>
             <AddressesPage />

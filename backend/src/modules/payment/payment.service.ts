@@ -224,14 +224,11 @@ export class PaymentsService {
     }
 
     if (order.payment.status === PaymentStatus.REFUNDED) {
-      return {
-        alreadyRefunded: true,
-        payment: order.payment,
-      };
+      throw new ConflictException('Refund already approved');
     }
 
     if (order.payment.status !== PaymentStatus.REFUND_PENDING) {
-      throw new BadRequestException('Payment is not in REFUND_PENDING state');
+      throw new ConflictException('Refund is not pending approval');
     }
 
     if (!order.payment.stripePaymentIntentId) {

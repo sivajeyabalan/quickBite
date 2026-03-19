@@ -1,3 +1,233 @@
+## Post-Deployment Manual Testing Checklist (A → Z)
+
+Use this as a release checklist in production/staging.
+
+- **A — Authentication**
+  - Register, login, logout, refresh-token/session persistence.
+  - Invalid credentials and locked/disabled user behavior.
+
+- **B — Role-Based Access**
+  - `CUSTOMER`, `STAFF`, `ADMIN` see correct pages.
+  - Direct URL access blocked/redirected correctly (especially `/`, `/orders`, `/kitchen`, `/admin`).
+
+- **C — Cart**
+  - Add/remove/update quantity, customizations, totals.
+  - Cart persistence across refresh/login.
+
+- **D — Dine-In Flow**
+  - Place dine-in order with new simplified message (“staff will assign table”).
+  - Ensure no old table-assignment UI/routes appear.
+
+- **E — Error Handling**
+  - API failures show user-friendly toasts/messages.
+  - No white-screen/uncaught errors in console.
+
+- **F — Filters & Search**
+  - Kitchen tab filters (All/Fine Dine/Pickup/Delivery).
+  - Admin order filters incl. refund-related filters.
+
+- **G — Gateway/WebSocket Events**
+  - Real-time updates for new order, status updates, payment updates, refund updates.
+  - No manual refresh required for critical status badges.
+
+- **H — Header/Nav**
+  - Navbar links per role are correct.
+  - Badge counts update and clear correctly (cart, refund-pending indicator).
+
+- **I — Input Validation**
+  - Phone/pincode reject alphabetic input.
+  - Required fields, boundaries, and format validation.
+
+- **J — Journey Continuity**
+  - End-to-end customer journey from menu to order tracking.
+  - Re-login resumes expected state.
+
+- **K — Kitchen Board**
+  - Status transitions forward/backward work.
+  - Cards move columns correctly.
+  - “Collect Payment”, “Paid”, “Refund Pending”, “Refunded” tags show correctly.
+
+- **L — Loading States**
+  - Spinners/skeletons appear during fetch/mutations.
+  - Buttons disable during API actions to avoid double-submit.
+
+- **M — Menu Management**
+  - Admin CRUD for categories/items/modifiers.
+  - Customer menu reflects latest changes quickly.
+
+- **N — Notifications**
+  - Toasts for key actions (new order, status updated, payment success/fail, refund actions).
+  - No duplicate or stale notifications.
+
+- **O — Orders (Customer)**
+  - Place order for Delivery/Pickup/Dine-in.
+  - Order list and order details (`/orders/:id`) stay in sync.
+
+- **P — Payments**
+  - Cash flow: not auto-paid; shows pending collect behavior.
+  - Card/Stripe flow: success, failure, cancellation, retry.
+  - Payment status reflected in all role UIs.
+
+- **Q — Query/Cache Consistency**
+  - After updates, list/detail views stay consistent.
+  - No stale badges after approve-refund.
+
+- **R — Refund Lifecycle**
+  - Paid order cancellation marks `REFUND_PENDING`.
+  - Admin can approve refund quickly from orders list.
+  - Post-approve: status becomes `REFUNDED`, pending counts disappear instantly.
+  - Idempotency: second approval does not double-refund.
+
+- **S — Security**
+  - Protected endpoints reject unauthorized roles.
+  - JWT expiry behavior and forced redirects verified.
+
+- **T — Time/Timers**
+  - “Xm ago” and ordering of kitchen cards (FIFO) correct.
+  - Polling fallback works if socket temporarily disconnects.
+
+- **U — URL/Route Behavior**
+  - Unknown route redirect per role works.
+  - Staff hitting root goes to `/kitchen`; admin to `/admin`; customer to `/`.
+
+- **V — Version/Env**
+  - Correct deployed `VITE_API_URL` and backend envs.
+  - Stripe publishable/secret keys point to correct environment.
+
+- **W — Webhooks (Stripe)**
+  - Payment confirmation webhooks update order/payment states.
+  - Late/out-of-order webhook does not break cancelled/refund states.
+
+- **X — Cross-Browser/Device**
+  - Chrome/Edge/Safari/Firefox basic pass.
+  - Mobile responsive checks for checkout, tracking, kitchen/admin essentials.
+
+- **Y — Yield/Performance Smoke**
+  - High-level responsiveness with multiple concurrent orders.
+  - No severe lag in kitchen/admin real-time screens.
+
+- **Z — Zero-Downtime/Regression Smoke**
+  - Fresh deploy sanity: login, place order, status update, pay, cancel, refund approve.
+  - Verify logs/monitoring show no critical errors after release.
+
+---
+
+If you want, I can convert this into a **printable QA template** with `Pass/Fail/Notes` columns and priority (`P0/P1/P2`) for your team.## Post-Deployment Manual Testing Checklist (A → Z)
+
+Use this as a release checklist in production/staging.
+
+- **A — Authentication**
+  - Register, login, logout, refresh-token/session persistence.
+  - Invalid credentials and locked/disabled user behavior.
+
+- **B — Role-Based Access**
+  - `CUSTOMER`, `STAFF`, `ADMIN` see correct pages.
+  - Direct URL access blocked/redirected correctly (especially `/`, `/orders`, `/kitchen`, `/admin`).
+
+- **C — Cart**
+  - Add/remove/update quantity, customizations, totals.
+  - Cart persistence across refresh/login.
+
+- **D — Dine-In Flow**
+  - Place dine-in order with new simplified message (“staff will assign table”).
+  - Ensure no old table-assignment UI/routes appear.
+
+- **E — Error Handling**
+  - API failures show user-friendly toasts/messages.
+  - No white-screen/uncaught errors in console.
+
+- **F — Filters & Search**
+  - Kitchen tab filters (All/Fine Dine/Pickup/Delivery).
+  - Admin order filters incl. refund-related filters.
+
+- **G — Gateway/WebSocket Events**
+  - Real-time updates for new order, status updates, payment updates, refund updates.
+  - No manual refresh required for critical status badges.
+
+- **H — Header/Nav**
+  - Navbar links per role are correct.
+  - Badge counts update and clear correctly (cart, refund-pending indicator).
+
+- **I — Input Validation**
+  - Phone/pincode reject alphabetic input.
+  - Required fields, boundaries, and format validation.
+
+- **J — Journey Continuity**
+  - End-to-end customer journey from menu to order tracking.
+  - Re-login resumes expected state.
+
+- **K — Kitchen Board**
+  - Status transitions forward/backward work.
+  - Cards move columns correctly.
+  - “Collect Payment”, “Paid”, “Refund Pending”, “Refunded” tags show correctly.
+
+- **L — Loading States**
+  - Spinners/skeletons appear during fetch/mutations.
+  - Buttons disable during API actions to avoid double-submit.
+
+- **M — Menu Management**
+  - Admin CRUD for categories/items/modifiers.
+  - Customer menu reflects latest changes quickly.
+
+- **N — Notifications**
+  - Toasts for key actions (new order, status updated, payment success/fail, refund actions).
+  - No duplicate or stale notifications.
+
+- **O — Orders (Customer)**
+  - Place order for Delivery/Pickup/Dine-in.
+  - Order list and order details (`/orders/:id`) stay in sync.
+
+- **P — Payments**
+  - Cash flow: not auto-paid; shows pending collect behavior.
+  - Card/Stripe flow: success, failure, cancellation, retry.
+  - Payment status reflected in all role UIs.
+
+- **Q — Query/Cache Consistency**
+  - After updates, list/detail views stay consistent.
+  - No stale badges after approve-refund.
+
+- **R — Refund Lifecycle**
+  - Paid order cancellation marks `REFUND_PENDING`.
+  - Admin can approve refund quickly from orders list.
+  - Post-approve: status becomes `REFUNDED`, pending counts disappear instantly.
+  - Idempotency: second approval does not double-refund.
+
+- **S — Security**
+  - Protected endpoints reject unauthorized roles.
+  - JWT expiry behavior and forced redirects verified.
+
+- **T — Time/Timers**
+  - “Xm ago” and ordering of kitchen cards (FIFO) correct.
+  - Polling fallback works if socket temporarily disconnects.
+
+- **U — URL/Route Behavior**
+  - Unknown route redirect per role works.
+  - Staff hitting root goes to `/kitchen`; admin to `/admin`; customer to `/`.
+
+- **V — Version/Env**
+  - Correct deployed `VITE_API_URL` and backend envs.
+  - Stripe publishable/secret keys point to correct environment.
+
+- **W — Webhooks (Stripe)**
+  - Payment confirmation webhooks update order/payment states.
+  - Late/out-of-order webhook does not break cancelled/refund states.
+
+- **X — Cross-Browser/Device**
+  - Chrome/Edge/Safari/Firefox basic pass.
+  - Mobile responsive checks for checkout, tracking, kitchen/admin essentials.
+
+- **Y — Yield/Performance Smoke**
+  - High-level responsiveness with multiple concurrent orders.
+  - No severe lag in kitchen/admin real-time screens.
+
+- **Z — Zero-Downtime/Regression Smoke**
+  - Fresh deploy sanity: login, place order, status update, pay, cancel, refund approve.
+  - Verify logs/monitoring show no critical errors after release.
+
+---
+
+If you want, I can convert this into a **printable QA template** with `Pass/Fail/Notes` columns and priority (`P0/P1/P2`) for your team.
+
 # QuickBite — Real-World Feature Roadmap (No Fluff)
 
 This is a practical roadmap for turning QuickBite from MVP into a production-grade restaurant platform.

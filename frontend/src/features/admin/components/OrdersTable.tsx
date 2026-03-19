@@ -54,6 +54,8 @@ export default function OrdersTable() {
 
   const [filterStatus, setFilterStatus] = useState('');
   const [filterDate,   setFilterDate]   = useState('');
+  const [refundingOrderId, setRefundingOrderId] = useState<string | null>(null);
+  const [lockedRefundOrderIds, setLockedRefundOrderIds] = useState<Set<string>>(new Set());
 
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ['admin-orders', filterStatus, filterDate],
@@ -78,14 +80,65 @@ export default function OrdersTable() {
       api.patch(`/payments/orders/${orderId}/refund/approve`, {
         reason: 'Approved from admin orders dashboard',
       }),
-    onSuccess: () => {
+    onMutate: ({ orderId }) => {
+      setRefundingOrderId(orderId);
+      setLockedRefundOrderIds(prev => new Set(prev).add(orderId));
+    },
+    onSuccess: (_res, variables) => {
       queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       queryClient.invalidateQueries({ queryKey: PENDING_REFUND_COUNT_QUERY_KEY });
+
       toast.success('Refund approved');
+
+      queryClient.setQueriesData({ queryKey: ['admin-orders'] }, (prev: Order[] | undefined) => {
+        if (!prev) return prev;
+        return prev.map((order) =>
+          order.id === variables.orderId
+            ? {
+                ...order,
+                payment: order.payment
+                  ? { ...order.payment, status: 'REFUNDED' as const }
+                  : order.payment,
+              }
+            : order,
+        );
+      });
+
+      setRefundingOrderId(null);
     },
-    onError: (err: any) => {
+    onError: (err: any, variables) => {
+      const statusCode = err?.response?.status;
+
+      if (statusCode === 409) {
+        toast('Refund already processed');
+        queryClient.setQueriesData({ queryKey: ['admin-orders'] }, (prev: Order[] | undefined) => {
+          if (!prev) return prev;
+          return prev.map((order) =>
+            order.id === variables.orderId
+              ? {
+                  ...order,
+                  payment: order.payment
+                    ? { ...order.payment, status: 'REFUNDED' as const }
+                    : order.payment,
+                }
+              : order,
+          );
+        });
+        queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
+        queryClient.invalidateQueries({ queryKey: ['orders'] });
+        queryClient.invalidateQueries({ queryKey: PENDING_REFUND_COUNT_QUERY_KEY });
+        setRefundingOrderId(null);
+        return;
+      }
+
       toast.error(err.response?.data?.message || 'Failed to approve refund');
+      setRefundingOrderId(null);
+      setLockedRefundOrderIds(prev => {
+        const next = new Set(prev);
+        next.delete(variables.orderId);
+        return next;
+      });
     },
   });
 
@@ -249,14 +302,23 @@ export default function OrdersTable() {
                     {order.payment?.status === 'REFUND_PENDING' && (
                       <button
                         onClick={() => approveRefundMutation.mutate({ orderId: order.id })}
-                        disabled={approveRefundMutation.isPending}
-                        className="text-xs px-2 py-1 border border-orange-300 text-orange-700 rounded-lg hover:bg-orange-50 transition disabled:opacity-50"
+                        disabled={refundingOrderId === order.id || lockedRefundOrderIds.has(order.id)}
+                        className="text-xs px-2 py-1 border border-orange-300 text-orange-700 rounded-lg hover:bg-orange-50 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
                       >
-                        {approveRefundMutation.isPending ? 'Approving...' : 'Approve Refund'}
+                        {refundingOrderId === order.id ? (
+                          <>
+                            <span className="inline-block w-3 h-3 border-2 border-orange-300 border-t-orange-700 rounded-full animate-spin" />
+                            Approving...
+                          </>
+                        ) : lockedRefundOrderIds.has(order.id) ? (
+                          'Approved'
+                        ) : (
+                          'Approve Refund'
+                        )}
                       </button>
                     )}
                     <button
-                      onClick={() => navigate(`/orders/${order.id}`)}
+                      onClick={() => navigate(`/ops/orders/${order.id}`)}
                       className="text-xs px-2 py-1 border border-gray-300
                                  rounded-lg hover:bg-gray-100 transition"
                     >

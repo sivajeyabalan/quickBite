@@ -157,7 +157,7 @@ export default function OrderTrackingPage() {
     const paymentReturn = searchParams.get('payment');
     if (paymentReturn === 'complete') {
       queryClient.invalidateQueries({ queryKey: ['order', id] });
-      window.history.replaceState({}, '', `/orders/${id}`);
+      window.history.replaceState({}, '', window.location.pathname);
     }
   }, [searchParams, id, queryClient]);
 

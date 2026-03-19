@@ -21,6 +21,7 @@ export default function PaymentPanel({ order }: { order: Order }) {
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>('CASH');
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [isLocallyPaid, setIsLocallyPaid] = useState(false);
+  const [refundLocked, setRefundLocked] = useState(false);
 
   const cashMutation = useMutation({
     mutationFn: (method: PaymentMethod) =>
@@ -64,15 +65,50 @@ export default function PaymentPanel({ order }: { order: Order }) {
       api.patch(`/payments/orders/${order.id}/refund/approve`, {
         reason: 'Approved by staff/admin from order tracking',
       }),
+    onMutate: () => {
+      setRefundLocked(true);
+    },
     onSuccess: () => {
       toast.success('Refund approved and processed');
+
+      queryClient.setQueryData(['order', order.id], (prev: Order | undefined) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          payment: prev.payment
+            ? { ...prev.payment, status: 'REFUNDED' }
+            : prev.payment,
+        };
+      });
+
       queryClient.invalidateQueries({ queryKey: ['order', order.id] });
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
       queryClient.invalidateQueries({ queryKey: ['kitchen-orders'] });
     },
     onError: (err: any) => {
+      const statusCode = err?.response?.status;
+
+      if (statusCode === 409) {
+        toast('Refund already processed');
+        queryClient.setQueryData(['order', order.id], (prev: Order | undefined) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            payment: prev.payment
+              ? { ...prev.payment, status: 'REFUNDED' }
+              : prev.payment,
+          };
+        });
+        queryClient.invalidateQueries({ queryKey: ['order', order.id] });
+        queryClient.invalidateQueries({ queryKey: ['orders'] });
+        queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
+        queryClient.invalidateQueries({ queryKey: ['kitchen-orders'] });
+        return;
+      }
+
       toast.error(err.response?.data?.message || 'Failed to approve refund');
+      setRefundLocked(false);
     },
   });
 
@@ -185,10 +221,14 @@ export default function PaymentPanel({ order }: { order: Order }) {
           {isStaffOrAdmin && (
             <button
               onClick={() => approveRefundMutation.mutate()}
-              disabled={approveRefundMutation.isPending}
-              className="mt-2 w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2.5 rounded-xl transition disabled:opacity-50"
+              disabled={approveRefundMutation.isPending || refundLocked}
+              className="mt-2 w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2.5 rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {approveRefundMutation.isPending ? <Spinner size="sm" /> : 'Approve Refund'}
+              {approveRefundMutation.isPending
+                ? <Spinner size="sm" />
+                : refundLocked
+                  ? 'Approved'
+                  : 'Approve Refund'}
             </button>
           )}
         </div>
