@@ -36,14 +36,14 @@ export default function LoginPage(){
 
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-orange-500">🍽 QuickBite</h1>
-          <p className="text-gray-500 mt-1">Sign in to your account</p>
+          <h1 className="heading-2 text-orange-500"> QuickBite</h1>
+          <p className="body-text-sm text-gray-500 mt-1">Sign in to your account</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Email */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block font-ui text-sm font-medium text-gray-700 mb-1">
               Email
             </label>
             <input
@@ -64,7 +64,7 @@ export default function LoginPage(){
 
           {/* Password */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block font-ui text-sm font-medium text-gray-700 mb-1">
               Password
             </label>
             <input
@@ -87,16 +87,16 @@ export default function LoginPage(){
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-60
-                       text-white font-semibold py-2.5 rounded-lg transition"
+            className="button-text w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-60
+                       text-white py-2.5 rounded-lg transition"
           >
             {loading ? <Spinner size="sm" /> : 'Sign In'}
           </button>
         </form>
 
-        <p className="text-center text-sm text-gray-500 mt-6">
+        <p className="text-center body-text-sm text-gray-500 mt-6">
           Don't have an account?{' '}
-          <Link to="/register" className="text-orange-500 font-medium hover:underline">
+          <Link to="/register" className="font-accent text-orange-500 font-medium hover:underline">
             Register
           </Link>
         </p>

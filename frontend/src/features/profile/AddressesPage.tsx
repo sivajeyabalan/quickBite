@@ -175,8 +175,8 @@ export default function AddressesPage() {
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Address Book</h1>
-          <p className="text-sm text-gray-500 mt-1">Manage delivery addresses</p>
+          <h1 className="heading-2 text-gray-800">Address Book</h1>
+          <p className="body-text-sm text-gray-500 mt-1">Manage delivery addresses</p>
         </div>
         <div className="flex items-center gap-2">
           {fromCart && (
@@ -186,7 +186,7 @@ export default function AddressesPage() {
                 sessionStorage.setItem('qb_reopen_cart', '1');
                 navigate(returnTo);
               }}
-              className="px-4 py-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 text-sm font-semibold"
+              className="px-4 py-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 button-text"
             >
               Back to Cart
             </button>
@@ -194,7 +194,7 @@ export default function AddressesPage() {
           <button
             type="button"
             onClick={() => setShowAddForm(prev => !prev)}
-            className="px-4 py-2 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold"
+            className="px-4 py-2 rounded-lg bg-orange-500 hover:bg-orange-600 text-white button-text"
           >
             {showAddForm ? 'Close' : 'Add Address'}
           </button>
@@ -248,7 +248,7 @@ export default function AddressesPage() {
                 <>
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-sm font-semibold text-gray-800">
+                      <p className="heading-4 text-gray-800">
                         {address.label || 'Saved Address'}
                         {address.isDefault && (
                           <span className="ml-2 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
@@ -418,7 +418,7 @@ function AddressFormCard({
           type="button"
           onClick={onSave}
           disabled={saving}
-          className="px-4 py-2 bg-orange-500 hover:bg-orange-600 rounded-lg text-sm text-white font-semibold disabled:opacity-50"
+          className="px-4 py-2 bg-orange-500 hover:bg-orange-600 rounded-lg text-white button-text disabled:opacity-50"
         >
           {saving ? 'Saving...' : 'Save'}
         </button>

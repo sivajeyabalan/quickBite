@@ -174,7 +174,7 @@ export default function CartDrawer() {
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4
                         border-b border-gray-100">
-          <h2 className="text-lg font-bold text-gray-800">Your Cart</h2>
+          <h2 className="heading-3 text-gray-800">Your Cart</h2>
           <button
             onClick={() => dispatch(toggleCart())}
             className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
@@ -188,8 +188,8 @@ export default function CartDrawer() {
           <div className="flex-1 flex flex-col items-center justify-center
                           text-gray-400 gap-3">
             <span className="text-5xl">🛒</span>
-            <p className="font-medium">Your cart is empty</p>
-            <p className="text-sm">Add items from the menu</p>
+            <p className="font-ui font-medium">Your cart is empty</p>
+            <p className="body-text-sm">Add items from the menu</p>
           </div>
         ) : (
           <>
@@ -212,14 +212,14 @@ export default function CartDrawer() {
                     ) : (
                       <div className="w-full h-full flex items-center
                                       justify-center text-2xl">
-                        🍽
+                        
                       </div>
                     )}
                   </div>
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-800 text-sm truncate">
+                    <p className="font-body font-medium text-gray-800 text-sm truncate">
                       {item.name}
                     </p>
 
@@ -254,7 +254,7 @@ export default function CartDrawer() {
                         >
                           −
                         </button>
-                        <span className="text-sm font-semibold w-4 text-center">
+                        <span className="button-text font-semibold w-4 text-center">
                           {item.quantity}
                         </span>
                         <button
@@ -273,7 +273,7 @@ export default function CartDrawer() {
                       </div>
 
                       {/* Line Total */}
-                      <span className="text-sm font-bold text-orange-500">
+                      <span className="accent-text font-bold text-orange-500">
                         ${(item.price * item.quantity).toFixed(2)}
                       </span>
                     </div>
@@ -291,7 +291,7 @@ export default function CartDrawer() {
               ))}
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block font-ui text-sm font-medium text-gray-700 mb-2">
                   Order Type
                 </label>
                 <div className="grid grid-cols-3 gap-2">
@@ -300,7 +300,7 @@ export default function CartDrawer() {
                       key={type.value}
                       type="button"
                       onClick={() => dispatch(setOrderType(type.value))}
-                      className={`px-3 py-2 rounded-lg text-sm font-medium border transition ${
+                      className={`px-3 py-2 rounded-lg label-text border transition ${
                         orderType === type.value
                           ? 'border-orange-500 bg-orange-50 text-orange-600'
                           : 'border-gray-200 text-gray-600 hover:border-orange-300'
@@ -315,7 +315,7 @@ export default function CartDrawer() {
               {/* Fine Dine Info */}
               {orderType === 'FINE_DINE' && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block font-ui text-sm font-medium text-gray-700 mb-1">
                     Dine-in Table
                   </label>
                   <div className="w-full px-3 py-2 border border-orange-200 rounded-lg text-sm bg-orange-50 text-orange-700">
@@ -327,7 +327,7 @@ export default function CartDrawer() {
               {orderType === 'DELIVERY' && (
                 <div className="space-y-3 rounded-xl border border-gray-200 p-3 bg-gray-50">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium text-gray-700">Delivery Address</p>
+                    <p className="font-ui text-sm font-medium text-gray-700">Delivery Address</p>
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
@@ -336,14 +336,14 @@ export default function CartDrawer() {
                           const returnTo = `${location.pathname}${location.search}`;
                           navigate(`/addresses?from=cart&returnTo=${encodeURIComponent(returnTo)}`);
                         }}
-                        className="text-xs font-semibold text-gray-500 hover:text-gray-700"
+                        className="label-text text-gray-500 hover:text-gray-700"
                       >
                         Manage
                       </button>
                       <button
                         type="button"
                         onClick={() => setShowNewAddressForm(prev => !prev)}
-                        className="text-xs font-semibold text-orange-500 hover:text-orange-600"
+                        className="label-text text-orange-500 hover:text-orange-600"
                       >
                         {showNewAddressForm ? 'Use Saved' : 'Add New'}
                       </button>
@@ -427,7 +427,7 @@ export default function CartDrawer() {
 
               {/* Order Notes */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block font-ui text-sm font-medium text-gray-700 mb-1">
                   Order Notes
                 </label>
                 <textarea

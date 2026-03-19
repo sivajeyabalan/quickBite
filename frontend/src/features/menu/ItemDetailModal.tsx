@@ -83,18 +83,18 @@ export default function ItemDetailModal({ item, onClose }: Props) {
           {/* Header */}
           <div className="flex justify-between items-start">
             <div>
-              <h2 className="text-xl font-bold text-gray-800">{item.name}</h2>
-              <p className="text-sm text-gray-500 mt-1">
+              <h2 className="heading-3 text-gray-800">{item.name}</h2>
+              <p className="body-text-sm text-gray-500 mt-1">
                 ⏱ {item.prepTimeMins} min prep time
               </p>
             </div>
-            <span className="text-xl font-bold text-orange-500">
+            <span className="accent-text font-bold text-orange-500">
               ${Number(item.price).toFixed(2)}
             </span>
           </div>
 
           {item.description && (
-            <p className="text-sm text-gray-600 mt-3 leading-relaxed">
+            <p className="font-body text-sm text-gray-600 mt-3 leading-relaxed">
               {item.description}
             </p>
           )}
@@ -102,13 +102,13 @@ export default function ItemDetailModal({ item, onClose }: Props) {
           {/* Customisation Options */}
           {Object.keys(options).length > 0 && (
             <div className="mt-5 space-y-4">
-              <h3 className="font-semibold text-gray-700 text-sm">
+              <h3 className="heading-4 text-gray-700">
                 Customise Your Order
               </h3>
 
               {Object.entries(options).map(([group, values]) => (
                 <div key={group}>
-                  <p className="text-xs font-medium text-gray-500 uppercase
+                  <p className="label-text text-gray-500 uppercase
                                 tracking-wide mb-2">
                     {group}
                   </p>
@@ -117,7 +117,7 @@ export default function ItemDetailModal({ item, onClose }: Props) {
                       <button
                         key={value}
                         onClick={() => handleOptionSelect(group, value)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-medium
+                        className={`px-3 py-1.5 rounded-full label-text
                                     border transition
                           ${selectedOptions[group] === value
                             ? 'bg-orange-500 text-white border-orange-500'
@@ -136,13 +136,13 @@ export default function ItemDetailModal({ item, onClose }: Props) {
           {/* Availability Warning */}
           {!available && (
             <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-xs text-red-600 font-medium">{reason}</p>
+              <p className="label-text text-red-600">{reason}</p>
             </div>
           )}
 
           {/* Quantity Selector */}
           <div className="flex items-center justify-between mt-6">
-            <span className="text-sm font-medium text-gray-700">Quantity</span>
+            <span className="font-ui text-sm font-medium text-gray-700">Quantity</span>
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setQuantity(q => Math.max(1, q - 1))}
@@ -175,7 +175,7 @@ export default function ItemDetailModal({ item, onClose }: Props) {
             <button
               onClick={onClose}
               className="flex-1 py-2.5 rounded-xl border border-gray-300
-                         text-gray-600 text-sm font-medium hover:bg-gray-50 transition"
+                         font-ui text-gray-600 text-sm font-medium hover:bg-gray-50 transition"
             >
               Cancel
             </button>
@@ -183,7 +183,7 @@ export default function ItemDetailModal({ item, onClose }: Props) {
               onClick={handleAddToCart}
               disabled={!available}
               className="flex-1 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600
-                         text-white text-sm font-semibold transition
+                         button-text text-white text-sm font-semibold transition
                          disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {available ? `Add to Cart — $${total}` : 'Unavailable'}

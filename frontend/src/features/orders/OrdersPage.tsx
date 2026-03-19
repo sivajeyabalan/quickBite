@@ -116,13 +116,13 @@ export default function OrdersPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">{pageTitle}</h1>
+      <h1 className="heading-2 text-gray-800 mb-6">{pageTitle}</h1>
 
       {orders.length === 0 ? (
         <div className="text-center py-20 text-gray-400">
           <p className="text-4xl mb-3">📋</p>
-          <p className="font-medium">No orders yet</p>
-          <p className="text-sm mt-1">Place your first order from the menu</p>
+          <p className="font-ui font-medium">No orders yet</p>
+          <p className="body-text-sm mt-1">Place your first order from the menu</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -133,8 +133,8 @@ export default function OrdersPage() {
             >
               <div className="flex justify-between items-start mb-3">
                 <div>
-                  <h2 className="font-bold text-gray-800">{order.orderNumber}</h2>
-                  <p className="text-xs text-gray-400 mt-0.5">
+                  <h2 className="heading-4 text-gray-800">{order.orderNumber}</h2>
+                  <p className="body-text-sm text-gray-400 mt-0.5">
                     {new Date(order.createdAt).toLocaleString()} ·
                     {ORDER_TYPE_LABEL[order.orderType]}
                     {order.orderType === 'FINE_DINE' ? ` · ${order.tableNumber ? `Table ${order.tableNumber}` : 'Table assigned by staff'}` : ''}
@@ -145,7 +145,7 @@ export default function OrdersPage() {
                     </p>
                   )}
                 </div>
-                <span className={`px-3 py-1 rounded-full text-xs font-semibold
+                <span className={`px-3 py-1 rounded-full label-text font-semibold
                                   ${STATUS_COLORS[order.status]}`}>
                   {order.status}
                 </span>

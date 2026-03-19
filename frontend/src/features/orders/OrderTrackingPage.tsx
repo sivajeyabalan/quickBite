@@ -190,16 +190,16 @@ export default function OrderTrackingPage() {
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
         <div className="flex justify-between items-start">
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">
+            <h1 className="heading-2 text-gray-800">
               {order.orderNumber}
             </h1>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="body-text-sm text-gray-500 mt-1">
               {ORDER_TYPE_LABEL[order.orderType]} 
               {order.orderType === 'FINE_DINE' ? ` · ${order.tableNumber ? `Table ${order.tableNumber}` : 'Table assigned by staff'}` : ''} ·{' '}
               {new Date(order.createdAt).toLocaleTimeString()}
             </p>
           </div>
-          <span className={`px-3 py-1.5 rounded-full text-sm font-semibold
+          <span className={`px-3 py-1.5 rounded-full label-text
             ${isCancelled
               ? 'bg-red-100 text-red-600'
               : 'bg-orange-100 text-orange-600'
@@ -253,7 +253,7 @@ export default function OrderTrackingPage() {
                 return (
                   <div key={step} className="flex flex-col items-center gap-2">
                     <div className={`w-8 h-8 rounded-full border-2 flex items-center
-                                    justify-center text-xs font-bold transition-all
+                                    justify-center label-text transition-all
                       ${done    ? 'bg-orange-500 border-orange-500 text-white'
                         : current ? 'bg-white border-orange-500 text-orange-500'
                         : 'bg-white border-gray-300 text-gray-400'

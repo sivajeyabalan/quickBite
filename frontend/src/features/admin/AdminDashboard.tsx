@@ -48,8 +48,8 @@ export default function AdminDashboard() {
 
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Admin Dashboard</h1>
-        <p className="text-sm text-gray-500 mt-1">
+        <h1 className="heading-2 text-gray-800">Admin Dashboard</h1>
+        <p className="body-text-sm text-gray-500 mt-1">
           Manage your restaurant
         </p>
       </div>
@@ -60,7 +60,7 @@ export default function AdminDashboard() {
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition
+            className={`font-ui px-4 py-2.5 text-sm font-medium border-b-2 transition
               -mb-px
               ${activeTab === tab.key
                 ? 'border-orange-500 text-orange-500'

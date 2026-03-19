@@ -279,7 +279,7 @@ export default function PaymentPanel({ order }: { order: Order }) {
                   setSelectedMethod(m.value as PaymentMethod)
                 }
                 className={`flex flex-col items-center gap-1.5 py-3
-                            rounded-xl border-2 text-xs font-medium
+                            rounded-xl border-2 label-text
                             transition
                   ${selectedMethod === m.value
                     ? 'border-orange-500 bg-orange-50 text-orange-600'

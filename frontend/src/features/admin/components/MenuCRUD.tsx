@@ -207,7 +207,7 @@ export default function MenuCRUD() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Name */}
             <div>
-              <label className="text-xs font-medium text-gray-500 mb-1 block">
+              <label className="label-text text-gray-500 mb-1 block">
                 Name *
               </label>
               <input
@@ -221,7 +221,7 @@ export default function MenuCRUD() {
 
             {/* Price */}
             <div>
-              <label className="text-xs font-medium text-gray-500 mb-1 block">
+              <label className="label-text text-gray-500 mb-1 block">
                 Price *
               </label>
               <input
@@ -237,7 +237,7 @@ export default function MenuCRUD() {
 
             {/* Category */}
             <div>
-              <label className="text-xs font-medium text-gray-500 mb-1 block">
+              <label className="label-text text-gray-500 mb-1 block">
                 Category *
               </label>
               <select
@@ -257,7 +257,7 @@ export default function MenuCRUD() {
 
             {/* Prep Time */}
             <div>
-              <label className="text-xs font-medium text-gray-500 mb-1 block">
+              <label className="label-text text-gray-500 mb-1 block">
                 Prep Time (mins)
               </label>
               <input
@@ -273,7 +273,7 @@ export default function MenuCRUD() {
 
             {/* Image URL */}
             <div className="sm:col-span-2">
-              <label className="text-xs font-medium text-gray-500 mb-1 block">
+              <label className="label-text text-gray-500 mb-1 block">
                 Image URL
               </label>
               <input
@@ -288,7 +288,7 @@ export default function MenuCRUD() {
               <div className="mt-2 flex items-center gap-3">
                 <label
                   className="inline-flex items-center px-3 py-2 border border-gray-300
-                             rounded-lg text-xs font-medium text-gray-700 hover:bg-gray-50
+                             rounded-lg label-text text-gray-700 hover:bg-gray-50
                              cursor-pointer transition"
                 >
                   {uploadImageMutation.isPending
@@ -323,7 +323,7 @@ export default function MenuCRUD() {
 
             {/* Description */}
             <div className="sm:col-span-2">
-              <label className="text-xs font-medium text-gray-500 mb-1 block">
+              <label className="label-text text-gray-500 mb-1 block">
                 Description
               </label>
               <textarea
@@ -368,7 +368,7 @@ export default function MenuCRUD() {
               onClick={handleSubmit}
               disabled={isSaving}
               className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white
-                         text-sm font-semibold rounded-xl transition
+                         button-text text-sm font-semibold rounded-xl transition
                          disabled:opacity-50"
             >
               {isSaving
@@ -444,7 +444,7 @@ export default function MenuCRUD() {
               {['Item', 'Category', 'Price', 'Prep', 'Status', 'Actions']
                 .map(h => (
                 <th key={h}
-                    className="text-left px-4 py-3 text-xs font-semibold
+                    className="text-left px-4 py-3 label-text
                                text-gray-500 uppercase tracking-wide">
                   {h}
                 </th>
@@ -476,12 +476,12 @@ export default function MenuCRUD() {
                 </td>
                 <td className="px-4 py-3">
                   {item.deletedAt ? (
-                    <span className="px-2 py-0.5 rounded-full text-xs font-medium
+                    <span className="px-2 py-0.5 rounded-full label-text
                       bg-gray-200 text-gray-500 line-through">
                       Deleted
                     </span>
                   ) : (
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium
+                    <span className={`px-2 py-0.5 rounded-full label-text
                       ${item.isAvailable
                         ? 'bg-green-100 text-green-700'
                         : 'bg-red-100   text-red-600'

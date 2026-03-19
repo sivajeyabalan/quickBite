@@ -45,12 +45,12 @@ export default function Navbar() {
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
 
         {/* Logo */}
-        <Link to="/" className="text-xl font-bold text-orange-500">
-          🍽 QuickBite
+        <Link to="/" className="heading-3 text-orange-500">
+          QuickBite
         </Link>
 
         {/* Nav Links */}
-        <div className="flex items-center gap-6 text-sm font-medium text-gray-600">
+        <div className="flex items-center gap-6 font-ui text-sm font-medium text-gray-600">
           {!isStaff && !isAdmin && (
             <>
               <Link to="/" className="hover:text-orange-500 transition">Menu</Link>
@@ -100,7 +100,7 @@ export default function Navbar() {
             <span className="text-sm text-gray-500">{user.name}</span>
             <button
               onClick={logout}
-              className="text-sm bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg transition"
+              className="button-text bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg transition"
             >
               Logout
             </button>

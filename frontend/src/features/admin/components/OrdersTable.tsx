@@ -224,10 +224,10 @@ export default function OrdersTable() {
       {pendingRefundOrders.length > 0 && (
         <div className="mb-5 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 flex items-center justify-between">
           <div>
-            <p className="text-sm font-semibold text-orange-700">
+            <p className="button-text text-orange-700">
               {pendingRefundOrders.length} refund approval{pendingRefundOrders.length !== 1 ? 's' : ''} pending
             </p>
-            <p className="text-xs text-orange-600">
+            <p className="body-text-sm text-orange-600">
               Use Approve Refund directly from Actions.
             </p>
           </div>
@@ -249,7 +249,7 @@ export default function OrdersTable() {
               {['Order', 'Customer', 'Type / Table', 'Items', 'Total',
                 'Status', 'Time', 'Actions'].map(h => (
                 <th key={h}
-                    className="text-left px-4 py-3 text-xs font-semibold
+                    className="text-left px-4 py-3 label-text
                                text-gray-500 uppercase tracking-wide">
                   {h}
                 </th>
@@ -278,17 +278,17 @@ export default function OrdersTable() {
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex flex-wrap gap-1">
-                    <span className={`px-2 py-0.5 rounded-full text-xs
-                                      font-medium ${STATUS_COLORS[order.status]}`}>
+                    <span className={`label-text font-medium
+                                      ${STATUS_COLORS[order.status]}`}>
                       {order.status}
                     </span>
                     {order.payment?.status === 'REFUND_PENDING' && (
-                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
+                      <span className="label-text font-medium bg-orange-100 text-orange-700">
                         REFUND_PENDING
                       </span>
                     )}
                     {order.payment?.status === 'REFUNDED' && (
-                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
+                      <span className="label-text font-medium bg-emerald-100 text-emerald-700">
                         REFUNDED
                       </span>
                     )}

@@ -50,35 +50,35 @@ const ItemCard = memo(function ItemCard({ item, onClick }: Props) {
       {/* Content */}
       <div className="p-4">
         <div className="flex justify-between items-start gap-2">
-          <h3 className="font-semibold text-gray-800 text-sm leading-tight">
+          <h3 className="font-heading font-semibold text-gray-800 text-sm leading-tight">
             {item.name}
           </h3>
         </div>
 
         {item.description && (
-          <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+          <p className="font-body text-xs text-gray-500 mt-1 line-clamp-2">
             {item.description}
           </p>
         )}
 
         <div className="flex justify-between items-center mt-3">
-          <span className="text-orange-500 font-bold text-sm">
+          <span className="font-accent font-bold text-orange-500 text-sm">
             ${Number(item.price).toFixed(2)}
           </span>
-          <span className="text-xs text-gray-400">
+          <span className="font-body text-xs text-gray-400">
             ⏱ {item.prepTimeMins} min
           </span>
         </div>
 
         {stockStatus && (
-          <p className="text-xs text-amber-600 mt-1 font-medium">
+          <p className="body-text-sm text-amber-600 mt-1 font-medium">
             {stockStatus}
           </p>
         )}
 
         <button
           disabled={!available}
-          className="mt-3 w-full text-xs font-medium py-1.5 rounded-lg transition
+          className="mt-3 w-full button-text py-1.5 rounded-lg transition
                      bg-orange-500 hover:bg-orange-600 text-white
                      disabled:opacity-40 disabled:cursor-not-allowed"
         >

@@ -54,7 +54,7 @@ export default function RegisterPage() {
     placeholder = '',
   ) => (
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">
+      <label className="block font-ui text-sm font-medium text-gray-700 mb-1">
         {label}
       </label>
       <input
@@ -81,8 +81,8 @@ export default function RegisterPage() {
       <div className="w-full max-w-md bg-white rounded-2xl shadow-md p-8">
 
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-orange-500">🍽 QuickBite</h1>
-          <p className="text-gray-500 mt-1">Create your account</p>
+          <h1 className="heading-2 text-orange-500"> QuickBite</h1>
+          <p className="body-text-sm text-gray-500 mt-1">Create your account</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -95,8 +95,8 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-60
-                       text-white font-semibold py-2.5 rounded-lg transition"
+            className="button-text w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-60
+                       text-white py-2.5 rounded-lg transition"
           >
             {loading ? <Spinner size="sm" /> : 'Create Account'}
           </button>

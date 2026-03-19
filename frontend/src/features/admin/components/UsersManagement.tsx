@@ -47,7 +47,7 @@ export default function UsersManagement() {
             {['Name', 'Email', 'Phone', 'Role', 'Joined', 'Actions'].map((header) => (
               <th
                 key={header}
-                className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide"
+                className="text-left px-4 py-3 label-text text-gray-500 uppercase tracking-wide"
               >
                 {header}
               </th>

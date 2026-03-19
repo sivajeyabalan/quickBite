@@ -80,7 +80,7 @@ export default function MenuPage() {
 
       {/* ── Category Sidebar ─────────────────────── */}
       <aside className="w-48 shrink-0 hidden md:block">
-        <h2 className="text-xs font-semibold text-gray-400 uppercase
+        <h2 className="label-text text-gray-400 uppercase
                        tracking-wide mb-3">
           Categories
         </h2>
@@ -90,7 +90,7 @@ export default function MenuPage() {
           <li>
             <button
               onClick={() => setSelectedCategory('')}
-              className={`w-full text-left px-3 py-2 rounded-lg text-sm
+              className={`w-full text-left px-3 py-2 rounded-lg font-ui
                           font-medium transition
                 ${selectedCategory === ''
                   ? 'bg-orange-500 text-white'
@@ -105,7 +105,7 @@ export default function MenuPage() {
             <li key={cat.id}>
               <button
                 onClick={() => setSelectedCategory(cat.name)}
-                className={`w-full text-left px-3 py-2 rounded-lg text-sm
+                className={`w-full text-left px-3 py-2 rounded-lg font-ui
                             font-medium transition
                   ${selectedCategory === cat.name
                     ? 'bg-orange-500 text-white'
@@ -139,7 +139,7 @@ export default function MenuPage() {
         <div className="flex gap-2 overflow-x-auto pb-3 mb-4 md:hidden">
           <button
             onClick={() => setSelectedCategory('')}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium
+            className={`px-4 py-1.5 rounded-full label-text
                         whitespace-nowrap transition border
               ${selectedCategory === ''
                 ? 'bg-orange-500 text-white border-orange-500'
@@ -152,7 +152,7 @@ export default function MenuPage() {
             <button
               key={cat.id}
               onClick={() => setSelectedCategory(cat.name)}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium
+              className={`px-4 py-1.5 rounded-full label-text
                           whitespace-nowrap transition border
                 ${selectedCategory === cat.name
                   ? 'bg-orange-500 text-white border-orange-500'
@@ -165,7 +165,7 @@ export default function MenuPage() {
         </div>
 
         {/* Section Heading */}
-        <h1 className="text-lg font-bold text-gray-800 mb-4">
+        <h1 className="heading-3 text-gray-800 mb-4">
           {selectedCategory || 'All Items'}
           <span className="text-sm font-normal text-gray-400 ml-2">
             ({items.length} items)

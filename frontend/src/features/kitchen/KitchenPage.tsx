@@ -107,10 +107,10 @@ function OrderCard({
       {/* Card Header */}
       <div className="flex justify-between items-start mb-4">
         <div>
-          <h3 className="text-lg font-bold text-gray-800">
+          <h3 className="heading-4 text-gray-800">
             {order.orderNumber}
           </h3>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <p className="body-text-sm text-gray-500 mt-0.5">
             {ORDER_TYPE_LABEL[order.orderType]} {order.orderType === 'FINE_DINE' ? `· ${order.tableNumber ? `Table ${order.tableNumber}` : 'Staff assigns table'}` : ''} · {minutesAgo}m ago
           </p>
           {order.payment?.method === 'CASH' && order.payment?.status === 'PENDING' && (
@@ -134,7 +134,7 @@ function OrderCard({
             </span>
           )}
         </div>
-        <span className={`px-3 py-1 rounded-full text-xs font-bold
+        <span className={`label-text font-bold
                           ${STATUS_BADGE[order.status]}`}>
           {order.status}
         </span>
@@ -345,16 +345,16 @@ export default function KitchenPage() {
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">
+          <h1 className="heading-2 text-gray-800">
              Kitchen Display
           </h1>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <p className="body-text-sm text-gray-500 mt-0.5">
             {filteredOrders.length} active order{filteredOrders.length !== 1 ? 's' : ''}
           </p>
         </div>
 
         {/* Live indicator */}
-        <div className="flex items-center gap-2 text-sm text-green-600
+        <div className="flex items-center gap-2 font-ui text-sm text-green-600
                         bg-green-50 px-3 py-1.5 rounded-full border
                         border-green-200">
           <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
@@ -367,7 +367,7 @@ export default function KitchenPage() {
           <button
             key={tab.value}
             onClick={() => setOrderTypeFilter(tab.value)}
-            className={`px-3 py-1.5 text-sm rounded-full border font-medium transition ${
+            className={`font-ui px-3 py-1.5 text-sm rounded-full border font-medium transition ${
               orderTypeFilter === tab.value
                 ? 'border-orange-500 bg-orange-50 text-orange-600'
                 : 'border-gray-200 bg-white text-gray-600 hover:border-orange-300'
@@ -382,8 +382,8 @@ export default function KitchenPage() {
       {filteredOrders.length === 0 && (
         <div className="text-center py-24 text-gray-400">
           <p className="text-5xl mb-4">🎉</p>
-          <p className="text-lg font-medium">All caught up!</p>
-          <p className="text-sm mt-1">No active orders right now</p>
+          <p className="heading-4 text-gray-800">All caught up!</p>
+          <p className="body-text-sm text-gray-400 mt-1">No active orders right now</p>
         </div>
       )}
 
