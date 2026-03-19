@@ -111,33 +111,6 @@ export interface Payment {
   refundedAt?:    string;
 }
 
-export interface TableAssignment {
-  id: string;
-  userId: string;
-  tableNumber: string;
-  status: 'ACTIVE' | 'RELEASED';
-  assignedAt: string;
-  assignedBy?: {
-    id: string;
-    name: string;
-  };
-}
-
-export interface TableRequest {
-  id: string;
-  userId: string;
-  status: 'PENDING' | 'COMPLETED' | 'CANCELLED';
-  partySize?: number;
-  notes?: string;
-  requestedAt: string;
-  user?: {
-    id: string;
-    name: string;
-    phone?: string;
-    email: string;
-  };
-}
-
 // Cart types — frontend only
 export interface CartItem {
   menuItemId:      string;

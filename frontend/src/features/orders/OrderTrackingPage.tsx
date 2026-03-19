@@ -195,7 +195,7 @@ export default function OrderTrackingPage() {
             </h1>
             <p className="text-sm text-gray-500 mt-1">
               {ORDER_TYPE_LABEL[order.orderType]} 
-              {order.orderType === 'FINE_DINE' ? ` · Table ${order.tableNumber || 'N/A'}` : ''} ·{' '}
+              {order.orderType === 'FINE_DINE' ? ` · ${order.tableNumber ? `Table ${order.tableNumber}` : 'Table assigned by staff'}` : ''} ·{' '}
               {new Date(order.createdAt).toLocaleTimeString()}
             </p>
           </div>

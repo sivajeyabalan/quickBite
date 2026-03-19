@@ -137,7 +137,7 @@ export default function OrdersPage() {
                   <p className="text-xs text-gray-400 mt-0.5">
                     {new Date(order.createdAt).toLocaleString()} ·
                     {ORDER_TYPE_LABEL[order.orderType]}
-                    {order.orderType === 'FINE_DINE' ? ` · Table ${order.tableNumber || 'N/A'}` : ''}
+                    {order.orderType === 'FINE_DINE' ? ` · ${order.tableNumber ? `Table ${order.tableNumber}` : 'Table assigned by staff'}` : ''}
                   </p>
                   {isAdminOrStaff && (
                     <p className="text-xs text-gray-500 mt-1">

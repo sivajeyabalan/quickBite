@@ -14,7 +14,6 @@ import MenuPage from './features/menu/MenuPage';
 import OrdersPage from './features/orders/OrdersPage';
 import OrderTrackingPage from './features/orders/OrderTrackingPage';
 import KitchenPage from './features/kitchen/KitchenPage';
-import { TableAssignmentPage } from './features/admin/TableAssignmentPage';
 import AdminDashboard from './features/admin/AdminDashboard';
 import AddressesPage from './features/profile/AddressesPage';
 import CartDrawer from './features/cart/CartDrawer';
@@ -77,11 +76,6 @@ export default function App() {
         <Route path="/kitchen" element={
           <ProtectedRoute roles={['STAFF', 'ADMIN']}>
             <KitchenPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/table-assignments" element={
-          <ProtectedRoute roles={['STAFF', 'ADMIN']}>
-            <TableAssignmentPage />
           </ProtectedRoute>
         } />
 

@@ -11,9 +11,6 @@ const mockPrisma = {
   menuItem: {
     findMany: jest.fn(),
   },
-  tableAssignment: {
-    findFirst: jest.fn(),
-  },
   order: {
     count:  jest.fn(),
     create: jest.fn(),
@@ -49,7 +46,6 @@ describe('OrdersService', () => {
 
     service = module.get<OrdersService>(OrdersService);
     jest.clearAllMocks();
-    mockPrisma.tableAssignment.findFirst.mockResolvedValue({ tableNumber: 'T1' });
     mockPrisma.order.findFirst.mockResolvedValue(null);
     mockPaymentsService.markRefundPendingOnCancel.mockResolvedValue({ status: 'NO_PAYMENT' });
   });

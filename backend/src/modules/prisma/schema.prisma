@@ -44,17 +44,6 @@ enum OrderType {
   DELIVERY
 }
 
-enum TableAssignmentStatus {
-  ACTIVE
-  RELEASED
-}
-
-enum TableRequestStatus {
-  PENDING
-  COMPLETED
-  CANCELLED
-}
-
 // ─── Models ──────────────────────────────────────
 model User {
   id           String   @id @default(uuid())
@@ -69,9 +58,6 @@ model User {
 
   orders Order[]
   addresses Address[]
-  tableAssignments TableAssignment[] @relation("CustomerTableAssignments")
-  tableAssignmentsGiven TableAssignment[] @relation("StaffTableAssignments")
-  tableRequests TableRequest[]
 
   @@map("users")
 }
@@ -199,41 +185,4 @@ model Payment {
   order Order @relation(fields: [orderId], references: [id])
 
   @@map("payments")
-}
-
-model TableAssignment {
-  id            String                @id @default(uuid())
-  userId        String                @map("user_id")
-  assignedById  String                @map("assigned_by_id")
-  tableNumber   String                @map("table_number")
-  status        TableAssignmentStatus @default(ACTIVE)
-  assignedAt    DateTime              @default(now()) @map("assigned_at")
-  releasedAt    DateTime?             @map("released_at")
-  createdAt     DateTime              @default(now()) @map("created_at")
-  updatedAt     DateTime              @updatedAt @map("updated_at")
-
-  user       User @relation("CustomerTableAssignments", fields: [userId], references: [id])
-  assignedBy User @relation("StaffTableAssignments", fields: [assignedById], references: [id])
-
-  @@index([userId, status])
-  @@index([tableNumber, status])
-  @@map("table_assignments")
-}
-
-model TableRequest {
-  id          String             @id @default(uuid())
-  userId      String             @map("user_id")
-  status      TableRequestStatus @default(PENDING)
-  partySize   Int?               @map("party_size")
-  notes       String?
-  requestedAt DateTime           @default(now()) @map("requested_at")
-  completedAt DateTime?          @map("completed_at")
-  createdAt   DateTime           @default(now()) @map("created_at")
-  updatedAt   DateTime           @updatedAt @map("updated_at")
-
-  user User @relation(fields: [userId], references: [id])
-
-  @@index([status])
-  @@index([userId, status])
-  @@map("table_requests")
 }

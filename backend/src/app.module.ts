@@ -14,8 +14,6 @@ import { OrdersModule } from './modules/order/order.module';
 import { PaymentsModule } from './modules/payment/payment.module';
 import { GatewayModule } from './modules/gateway/gateway.module';
 import { UsersModule } from './modules/users/users.module';
-import { TableAssignmentModule } from './modules/table-assignment/table-assignment.module';
-import { TableRequestModule } from './modules/table-request/table-request.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
@@ -33,8 +31,6 @@ import { TableRequestModule } from './modules/table-request/table-request.module
     OrdersModule,
     PaymentsModule,
     GatewayModule,
-    TableAssignmentModule,
-    TableRequestModule,
   ],
   
   providers: [

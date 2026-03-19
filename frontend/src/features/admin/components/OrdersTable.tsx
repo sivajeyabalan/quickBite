@@ -214,7 +214,7 @@ export default function OrdersTable() {
                 </td>
                 <td className="px-4 py-3 text-gray-500">
                   {ORDER_TYPE_LABEL[order.orderType]}
-                  {order.orderType === 'FINE_DINE' ? ` · ${order.tableNumber || '—'}` : ''}
+                  {order.orderType === 'FINE_DINE' ? ` · ${order.tableNumber ? `Table ${order.tableNumber}` : 'Staff assigns table'}` : ''}
                 </td>
                 <td className="px-4 py-3 text-gray-500">
                   {order.orderItems.length} item

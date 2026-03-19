@@ -111,7 +111,7 @@ function OrderCard({
             {order.orderNumber}
           </h3>
           <p className="text-sm text-gray-500 mt-0.5">
-            {ORDER_TYPE_LABEL[order.orderType]} {order.orderType === 'FINE_DINE' ? `· Table ${order.tableNumber || 'N/A'}` : ''} · {minutesAgo}m ago
+            {ORDER_TYPE_LABEL[order.orderType]} {order.orderType === 'FINE_DINE' ? `· ${order.tableNumber ? `Table ${order.tableNumber}` : 'Staff assigns table'}` : ''} · {minutesAgo}m ago
           </p>
           {order.payment?.method === 'CASH' && order.payment?.status === 'PENDING' && (
             <span className="inline-block mt-2 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-700 border border-amber-200">

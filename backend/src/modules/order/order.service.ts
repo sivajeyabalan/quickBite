@@ -8,7 +8,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order.dto';
-import { OrderStatus, OrderType, Role, TableAssignmentStatus } from '@prisma/client';
+import { OrderStatus, OrderType, Role } from '@prisma/client';
 import { generateOrderNumber } from './helpers/order-helper';
 import { isItemOrderable } from '../menu/helpers/availability.helper';
 
@@ -18,13 +18,6 @@ import { PaymentsService } from '../payment/payment.service';
 const TAX_RATE = Number(process.env.TAX_RATE) || 0.10; // 10% tax — move to config in production
 const ORDER_ACCEPT_SLA_MINUTES = Number(process.env.ORDER_ACCEPT_SLA_MINUTES) || 5;
 const ORDER_SLA_SWEEP_MS = Number(process.env.ORDER_SLA_SWEEP_MS) || 30_000;
-const ACTIVE_TABLE_BLOCKING_STATUSES: OrderStatus[] = [
-  OrderStatus.PENDING,
-  OrderStatus.CONFIRMED,
-  OrderStatus.PREPARING,
-  OrderStatus.READY,
-  OrderStatus.SERVED,
-];
 
 // Define valid status transitions — staff cannot skip steps
 const STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
@@ -66,23 +59,6 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
     return new Date(Date.now() + ORDER_ACCEPT_SLA_MINUTES * 60 * 1000);
   }
 
-  private async assertTableAvailable(tableNumber: string) {
-    const existing = await this.prisma.order.findFirst({
-      where: {
-        orderType: OrderType.FINE_DINE,
-        tableNumber,
-        status: { in: ACTIVE_TABLE_BLOCKING_STATUSES },
-      },
-      select: { id: true, orderNumber: true },
-    });
-
-    if (existing) {
-      throw new BadRequestException(
-        `Table ${tableNumber} is currently occupied by order ${existing.orderNumber}`,
-      );
-    }
-  }
-
   async create(dto: CreateOrderDto, userId: string) {
     const orderType = dto.orderType ?? OrderType.FINE_DINE;
 
@@ -104,22 +80,7 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
       | undefined;
 
     if (orderType === OrderType.FINE_DINE) {
-      const activeAssignment = await this.prisma.tableAssignment.findFirst({
-        where: {
-          userId,
-          status: TableAssignmentStatus.ACTIVE,
-        },
-        orderBy: { assignedAt: 'desc' },
-        select: {
-          tableNumber: true,
-        },
-      });
-
-      if (!activeAssignment?.tableNumber) {
-        throw new BadRequestException('No table assigned. Please contact host/staff.');
-      }
-      tableNumber = activeAssignment.tableNumber;
-      await this.assertTableAvailable(activeAssignment.tableNumber);
+      tableNumber = undefined;
     }
 
     if (orderType === OrderType.PICKUP) {

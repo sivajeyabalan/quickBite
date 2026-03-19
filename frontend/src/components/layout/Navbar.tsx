@@ -59,9 +59,6 @@ export default function Navbar() {
           {(isStaff || isAdmin) && (
             <Link to="/kitchen" className="hover:text-orange-500 transition">Kitchen</Link>
           )}
-          {(isStaff || isAdmin) && (
-            <Link to="/table-assignments" className="hover:text-orange-500 transition">Assign Tables</Link>
-          )}
           {isAdmin && (
             <Link to="/admin" className="hover:text-orange-500 transition">
               <span className="relative inline-flex items-center">

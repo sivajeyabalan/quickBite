@@ -10,7 +10,7 @@ import {
   selectCartItems, selectCartOpen,
   selectCartTotal, selectOrderType,
 } from './cardSlice'
-import type { Address, CartItem, OrderType, TableAssignment, TableRequest } from '../../types';
+import type { Address, CartItem, OrderType } from '../../types';
 import Spinner from '../../components/ui/Spinner';
 
 const TAX_RATE = 0.10;
@@ -50,10 +50,6 @@ export default function CartDrawer() {
   const [selectedAddressId, setSelectedAddressId] = useState('');
   const [showNewAddressForm, setShowNewAddressForm] = useState(false);
   const [newAddress, setNewAddress] = useState(EMPTY_NEW_ADDRESS);
-  const [activeTableAssignment, setActiveTableAssignment] = useState<TableAssignment | null>(null);
-  const [tableAssignmentLoading, setTableAssignmentLoading] = useState(false);
-  const [pendingTableRequest, setPendingTableRequest] = useState<TableRequest | null>(null);
-  const [requestingTable, setRequestingTable] = useState(false);
 
   const tax   = subtotal * TAX_RATE;
   const total = subtotal + tax;
@@ -90,57 +86,9 @@ export default function CartDrawer() {
     void fetchAddresses();
   }, [isOpen, orderType]);
 
-  useEffect(() => {
-    if (!isOpen || orderType !== 'FINE_DINE') return;
-
-    const fetchAssignedTable = async () => {
-      setTableAssignmentLoading(true);
-      try {
-        const res = await api.get('/table-assignments/me');
-        const assignment: TableAssignment | null = res.data.data ?? res.data;
-        setActiveTableAssignment(assignment);
-      } catch {
-        setActiveTableAssignment(null);
-      } finally {
-        setTableAssignmentLoading(false);
-      }
-    };
-
-    // Check for pending table request
-    const fetchPendingRequest = async () => {
-      try {
-        const res = await api.get('/table-requests/me');
-        const request: TableRequest | null = res.data.data ?? res.data;
-        setPendingTableRequest(request);
-      } catch {
-        setPendingTableRequest(null);
-      }
-    };
-
-    void fetchAssignedTable();
-    void fetchPendingRequest();
-
-    // Auto-refresh assignment every 2 seconds while waiting for table
-    let interval: ReturnType<typeof setInterval> | undefined;
-    if (!activeTableAssignment?.tableNumber && pendingTableRequest?.status === 'PENDING') {
-      interval = setInterval(() => {
-        void fetchAssignedTable();
-      }, 2000);
-    }
-
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [isOpen, orderType, activeTableAssignment?.tableNumber, pendingTableRequest?.status]);
-
   const handlePlaceOrder = async () => {
     if (items.length === 0) {
       toast.error('Your cart is empty');
-      return;
-    }
-
-    if (orderType === 'FINE_DINE' && !activeTableAssignment?.tableNumber) {
-      toast.error('No table assigned yet. Please contact host/staff.');
       return;
     }
 
@@ -206,24 +154,6 @@ export default function CartDrawer() {
       toast.error(Array.isArray(msg) ? msg[0] : msg);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleRequestTable = async () => {
-    setRequestingTable(true);
-    try {
-      const res = await api.post('/table-requests', {
-        partySize: undefined,
-        notes: undefined,
-      });
-      const request: TableRequest = res.data.data ?? res.data;
-      setPendingTableRequest(request);
-      toast.success('Table request sent! Waiting for staff to assign you a table...');
-    } catch (err: any) {
-      const msg = err.response?.data?.message || 'Failed to request table';
-      toast.error(Array.isArray(msg) ? msg[0] : msg);
-    } finally {
-      setRequestingTable(false);
     }
   };
 
@@ -382,34 +312,15 @@ export default function CartDrawer() {
                 </div>
               </div>
 
-              {/* Assigned Table */}
+              {/* Fine Dine Info */}
               {orderType === 'FINE_DINE' && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Assigned Table
+                    Dine-in Table
                   </label>
-                  {tableAssignmentLoading ? (
-                    <div className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-500">
-                      Checking assignment...
-                    </div>
-                  ) : activeTableAssignment?.tableNumber ? (
-                    <div className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50 text-gray-700">
-                      {activeTableAssignment.tableNumber}
-                    </div>
-                  ) : pendingTableRequest?.status === 'PENDING' ? (
-                    <div className="w-full px-3 py-2 border border-blue-200 rounded-lg text-sm bg-blue-50 text-blue-600 flex items-center gap-2">
-                      <Spinner size="xs" />
-                      Waiting for table assignment...
-                    </div>
-                  ) : (
-                    <button
-                      onClick={handleRequestTable}
-                      disabled={requestingTable}
-                      className="w-full px-3 py-2 border border-orange-300 rounded-lg text-sm bg-orange-50 text-orange-600 font-medium hover:bg-orange-100 transition disabled:opacity-50"
-                    >
-                      {requestingTable ? 'Requesting...' : 'Request Table'}
-                    </button>
-                  )}
+                  <div className="w-full px-3 py-2 border border-orange-200 rounded-lg text-sm bg-orange-50 text-orange-700">
+                    Staff will assign your table after order placement.
+                  </div>
                 </div>
               )}
 
