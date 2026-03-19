@@ -6,6 +6,7 @@ import api from '../../../api/axios';
 import type { Order, OrderStatus } from '../../../types';
 import Spinner from '../../../components/ui/Spinner';
 import { useSocket } from '../../../hooks/useSocket';
+import { PENDING_REFUND_COUNT_QUERY_KEY } from '../../../hooks/usePendingRefundCount';
 
 const STATUS_OPTIONS: OrderStatus[] = [
   'PENDING', 'CONFIRMED', 'PREPARING',
@@ -40,7 +41,7 @@ const STATUS_COLORS: Record<OrderStatus, string> = {
 
 const fetchAllOrders = async (status?: string, date?: string) => {
   const params: Record<string, string> = {};
-  if (status) params.status = status;
+  if (status && status !== 'REFUND_PENDING') params.status = status;
   if (date)   params.date   = date;
   const res = await api.get('/orders', { params });
   return res.data.data ?? res.data;
@@ -72,6 +73,22 @@ export default function OrdersTable() {
     },
   });
 
+  const approveRefundMutation = useMutation({
+    mutationFn: ({ orderId }: { orderId: string }) =>
+      api.patch(`/payments/orders/${orderId}/refund/approve`, {
+        reason: 'Approved from admin orders dashboard',
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: PENDING_REFUND_COUNT_QUERY_KEY });
+      toast.success('Refund approved');
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Failed to approve refund');
+    },
+  });
+
   useEffect(() => {
     if (!socket) return;
 
@@ -83,11 +100,33 @@ export default function OrdersTable() {
       queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
     });
 
+    socket.on('payment:refundPending', () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
+    });
+
+    socket.on('payment:refunded', () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
+    });
+
     return () => {
       socket.off('order:new');
       socket.off('order:statusUpdated');
+      socket.off('payment:refundPending');
+      socket.off('payment:refunded');
     };
   }, [socket, queryClient]);
+
+  const pendingRefundOrders = orders.filter(
+    (order: Order) => order.payment?.status === 'REFUND_PENDING',
+  );
+
+  const visibleOrders = orders.filter((order: Order) => {
+    if (!filterStatus) return true;
+    if (filterStatus === 'REFUND_PENDING') {
+      return order.payment?.status === 'REFUND_PENDING';
+    }
+    return order.status === filterStatus;
+  });
 
   if (isLoading) return (
     <div className="flex justify-center py-20"><Spinner size="lg" /></div>
@@ -107,6 +146,7 @@ export default function OrdersTable() {
           {STATUS_OPTIONS.map(s => (
             <option key={s} value={s}>{s}</option>
           ))}
+          <option value="REFUND_PENDING">Refund Pending Approval</option>
         </select>
 
         <input
@@ -128,6 +168,25 @@ export default function OrdersTable() {
         )}
       </div>
 
+      {pendingRefundOrders.length > 0 && (
+        <div className="mb-5 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 flex items-center justify-between">
+          <div>
+            <p className="text-sm font-semibold text-orange-700">
+              {pendingRefundOrders.length} refund approval{pendingRefundOrders.length !== 1 ? 's' : ''} pending
+            </p>
+            <p className="text-xs text-orange-600">
+              Use Approve Refund directly from Actions.
+            </p>
+          </div>
+          <button
+            onClick={() => setFilterStatus('REFUND_PENDING')}
+            className="text-xs px-3 py-1.5 border border-orange-300 text-orange-700 rounded-lg hover:bg-orange-100 transition"
+          >
+            View Pending
+          </button>
+        </div>
+      )}
+
       {/* Table */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm
                       overflow-hidden">
@@ -145,7 +204,7 @@ export default function OrdersTable() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
-            {orders.map((order: Order) => (
+            {visibleOrders.map((order: Order) => (
               <tr key={order.id} className="hover:bg-gray-50 transition">
                 <td className="px-4 py-3 font-bold text-gray-800">
                   {order.orderNumber}
@@ -165,16 +224,37 @@ export default function OrdersTable() {
                   ${Number(order.total).toFixed(2)}
                 </td>
                 <td className="px-4 py-3">
-                  <span className={`px-2 py-0.5 rounded-full text-xs
-                                    font-medium ${STATUS_COLORS[order.status]}`}>
-                    {order.status}
-                  </span>
+                  <div className="flex flex-wrap gap-1">
+                    <span className={`px-2 py-0.5 rounded-full text-xs
+                                      font-medium ${STATUS_COLORS[order.status]}`}>
+                      {order.status}
+                    </span>
+                    {order.payment?.status === 'REFUND_PENDING' && (
+                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
+                        REFUND_PENDING
+                      </span>
+                    )}
+                    {order.payment?.status === 'REFUNDED' && (
+                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
+                        REFUNDED
+                      </span>
+                    )}
+                  </div>
                 </td>
                 <td className="px-4 py-3 text-gray-400 text-xs">
                   {new Date(order.createdAt).toLocaleString()}
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex gap-2">
+                    {order.payment?.status === 'REFUND_PENDING' && (
+                      <button
+                        onClick={() => approveRefundMutation.mutate({ orderId: order.id })}
+                        disabled={approveRefundMutation.isPending}
+                        className="text-xs px-2 py-1 border border-orange-300 text-orange-700 rounded-lg hover:bg-orange-50 transition disabled:opacity-50"
+                      >
+                        {approveRefundMutation.isPending ? 'Approving...' : 'Approve Refund'}
+                      </button>
+                    )}
                     <button
                       onClick={() => navigate(`/orders/${order.id}`)}
                       className="text-xs px-2 py-1 border border-gray-300
@@ -212,7 +292,7 @@ export default function OrdersTable() {
           </tbody>
         </table>
 
-        {orders.length === 0 && (
+        {visibleOrders.length === 0 && (
           <div className="text-center py-12 text-gray-400 text-sm">
             No orders found
           </div>

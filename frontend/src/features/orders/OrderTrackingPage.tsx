@@ -79,8 +79,20 @@ export default function OrderTrackingPage() {
 
     socket.on('order:statusUpdated', (updated: Order) => {
       if (updated.id === id) {
-        // Update the cached order directly — no extra API call needed
-        queryClient.setQueryData(['order', id], updated);
+        queryClient.setQueryData(['order', id], (prev: Order | undefined) => {
+          if (!prev) return updated;
+          return {
+            ...prev,
+            ...updated,
+            orderItems: updated.orderItems ?? prev.orderItems,
+            payment: updated.payment ?? prev.payment,
+            user: updated.user ?? prev.user,
+            deliveryAddressSnapshot:
+              updated.deliveryAddressSnapshot ?? prev.deliveryAddressSnapshot,
+          };
+        });
+
+        queryClient.invalidateQueries({ queryKey: ['order', id] });
       }
     });
 

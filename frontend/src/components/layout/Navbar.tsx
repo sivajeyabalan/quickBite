@@ -1,14 +1,42 @@
 import { Link } from 'react-router-dom';
+import { useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
+import { useQueryClient } from '@tanstack/react-query';
 import type { AppDispatch } from '../../app/store';
 import { toggleCart } from '../../features/cart/cardSlice';
 import { selectCartCount } from '../../features/cart/cardSlice';
 import { useAuth } from '../../hooks/useAuth';
+import { useSocket } from '../../hooks/useSocket';
+import { PENDING_REFUND_COUNT_QUERY_KEY, usePendingRefundCount } from '../../hooks/usePendingRefundCount';
 
 export default function Navbar() {
   const dispatch   = useDispatch<AppDispatch>();
   const { user, logout, isAdmin, isStaff } = useAuth();
   const cartCount  = useSelector(selectCartCount);
+  const queryClient = useQueryClient();
+  const socket = useSocket();
+
+  const { data: pendingRefundCount = 0 } = usePendingRefundCount(isAdmin);
+
+  useEffect(() => {
+    if (!socket || !isAdmin) return;
+
+    const refreshPendingCount = () => {
+      queryClient.invalidateQueries({ queryKey: PENDING_REFUND_COUNT_QUERY_KEY });
+    };
+
+    socket.on('order:new', refreshPendingCount);
+    socket.on('order:statusUpdated', refreshPendingCount);
+    socket.on('payment:refundPending', refreshPendingCount);
+    socket.on('payment:refunded', refreshPendingCount);
+
+    return () => {
+      socket.off('order:new', refreshPendingCount);
+      socket.off('order:statusUpdated', refreshPendingCount);
+      socket.off('payment:refundPending', refreshPendingCount);
+      socket.off('payment:refunded', refreshPendingCount);
+    };
+  }, [socket, isAdmin, queryClient]);
 
   if (!user) return null; // hide navbar on login/register
 
@@ -35,7 +63,16 @@ export default function Navbar() {
             <Link to="/table-assignments" className="hover:text-orange-500 transition">Assign Tables</Link>
           )}
           {isAdmin && (
-            <Link to="/admin" className="hover:text-orange-500 transition">Admin</Link>
+            <Link to="/admin" className="hover:text-orange-500 transition">
+              <span className="relative inline-flex items-center">
+                Admin
+                {pendingRefundCount > 0 && (
+                  <span className="ml-1 min-w-5 h-5 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                    {pendingRefundCount > 9 ? '9+' : pendingRefundCount}
+                  </span>
+                )}
+              </span>
+            </Link>
           )}
         </div>
 
