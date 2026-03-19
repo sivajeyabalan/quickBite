@@ -123,6 +123,16 @@ function OrderCard({
               Paid
             </span>
           )}
+          {order.payment?.status === 'REFUND_PENDING' && (
+            <span className="inline-block mt-2 ml-2 px-2.5 py-1 rounded-full text-[11px] font-bold bg-orange-100 text-orange-700 border border-orange-200">
+              Refund Pending
+            </span>
+          )}
+          {order.payment?.status === 'REFUNDED' && (
+            <span className="inline-block mt-2 ml-2 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">
+              Refunded
+            </span>
+          )}
         </div>
         <span className={`px-3 py-1 rounded-full text-xs font-bold
                           ${STATUS_BADGE[order.status]}`}>
@@ -272,12 +282,22 @@ export default function KitchenPage() {
       queryClient.invalidateQueries({ queryKey: ['kitchen-orders'] });
     });
 
+    socket.on('payment:refundPending', () => {
+      queryClient.invalidateQueries({ queryKey: ['kitchen-orders'] });
+    });
+
+    socket.on('payment:refunded', () => {
+      queryClient.invalidateQueries({ queryKey: ['kitchen-orders'] });
+    });
+
     return () => {
       socket.off('order:new');
       socket.off('order:statusUpdated');
       socket.off('payment:cashSelected');
       socket.off('payment:confirmed');
       socket.off('payment:failed');
+      socket.off('payment:refundPending');
+      socket.off('payment:refunded');
     };
   }, [socket, queryClient]);
 

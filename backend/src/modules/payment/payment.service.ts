@@ -4,6 +4,7 @@ import {
   BadRequestException,
   ConflictException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { OrderStatus, OrderType, PaymentMethod, PaymentStatus } from '@prisma/client';
@@ -38,6 +39,11 @@ export class PaymentsService {
     ) {
       throw new BadRequestException('For delivery orders, only Card is allowed');
     }
+  }
+
+  private toNumber(value: Prisma.Decimal | number | string | null | undefined): number {
+    if (value === null || value === undefined) return 0;
+    return Number(value);
   }
 
   async create(dto: CreatePaymentDto) {
@@ -148,6 +154,123 @@ export class PaymentsService {
       },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  async markRefundPendingOnCancel(orderId: string, reason = 'ORDER_CANCELLED') {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: { payment: true },
+    });
+
+    if (!order) {
+      throw new NotFoundException(`Order ${orderId} not found`);
+    }
+
+    if (!order.payment) {
+      return { status: 'NO_PAYMENT' as const };
+    }
+
+    if (order.payment.method !== PaymentMethod.CARD) {
+      return { status: 'NOT_CARD_PAYMENT' as const };
+    }
+
+    if (order.payment.status === PaymentStatus.REFUNDED) {
+      return { status: 'ALREADY_REFUNDED' as const };
+    }
+
+    if (order.payment.status === PaymentStatus.REFUND_PENDING) {
+      return { status: 'ALREADY_REFUND_PENDING' as const };
+    }
+
+    if (order.payment.status !== PaymentStatus.PAID) {
+      return { status: 'NOT_PAID' as const };
+    }
+
+    await this.prisma.payment.update({
+      where: { id: order.payment.id },
+      data: {
+        status: PaymentStatus.REFUND_PENDING,
+        refundReason: reason,
+        refundAmount: order.payment.amount,
+      },
+    });
+
+    this.gateway.emitPaymentRefundPending({
+      orderId: order.id,
+      orderNumber: order.orderNumber,
+      amount: this.toNumber(order.payment.amount),
+      message: 'Refund awaiting staff approval',
+    });
+
+    return { status: 'REFUND_PENDING' as const };
+  }
+
+  async approveRefund(orderId: string, reason?: string) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: { payment: true },
+    });
+
+    if (!order) {
+      throw new NotFoundException(`Order ${orderId} not found`);
+    }
+
+    if (!order.payment) {
+      throw new NotFoundException('No payment found for this order');
+    }
+
+    if (order.payment.method !== PaymentMethod.CARD) {
+      throw new BadRequestException('Refund approval is only supported for card payments');
+    }
+
+    if (order.payment.status === PaymentStatus.REFUNDED) {
+      return {
+        alreadyRefunded: true,
+        payment: order.payment,
+      };
+    }
+
+    if (order.payment.status !== PaymentStatus.REFUND_PENDING) {
+      throw new BadRequestException('Payment is not in REFUND_PENDING state');
+    }
+
+    if (!order.payment.stripePaymentIntentId) {
+      throw new BadRequestException('Stripe payment reference missing for refund');
+    }
+
+    const refund = await this.stripe.createRefund(
+      order.payment.stripePaymentIntentId,
+      `refund:${order.payment.id}`,
+      undefined,
+      'requested_by_customer',
+    );
+
+    await this.prisma.payment.update({
+      where: { id: order.payment.id },
+      data: {
+        status: PaymentStatus.REFUNDED,
+        refundRef: refund.id,
+        refundReason: reason ?? order.payment.refundReason ?? 'ORDER_CANCELLED',
+        refundAmount: order.payment.amount,
+        refundedAt: new Date(),
+      },
+    });
+
+    this.gateway.emitPaymentRefunded({
+      orderId: order.id,
+      orderNumber: order.orderNumber,
+      amount: this.toNumber(order.payment.amount),
+      refundRef: refund.id,
+    });
+
+    const updatedPayment = await this.prisma.payment.findUnique({
+      where: { id: order.payment.id },
+    });
+
+    return {
+      refunded: true,
+      payment: updatedPayment,
+    };
   }
 
   async createStripePaymentIntent(orderId: string) {
@@ -284,7 +407,12 @@ export class PaymentsService {
 
       if (orderId) {
         await this.prisma.payment.updateMany({
-          where: { stripePaymentIntentId: intent.id },
+          where: {
+            stripePaymentIntentId: intent.id,
+            status: {
+              in: [PaymentStatus.PENDING, PaymentStatus.FAILED],
+            },
+          },
           data: {
             status:         'PAID',
             paidAt:         new Date(),
@@ -292,19 +420,32 @@ export class PaymentsService {
           },
         });
 
-        const updatedOrder = await this.prisma.order.update({
-          where:   { id: orderId },
-          data:    { status: 'CONFIRMED' },
-          include: { orderItems: true },
+        const currentOrder = await this.prisma.order.findUnique({
+          where: { id: orderId },
         });
 
-        this.gateway.emitPaymentConfirmed({
-          orderId,
-          orderNumber: updatedOrder.orderNumber,
-          amount: intent.amount / 100,
-        });
+        if (currentOrder) {
+          if (currentOrder.status === OrderStatus.PENDING) {
+            const updatedOrder = await this.prisma.order.update({
+              where:   { id: orderId },
+              data:    { status: 'CONFIRMED' },
+              include: { orderItems: true },
+            });
 
-        this.gateway.emitStatusUpdate(updatedOrder);
+            this.gateway.emitStatusUpdate(updatedOrder);
+            this.gateway.emitPaymentConfirmed({
+              orderId,
+              orderNumber: updatedOrder.orderNumber,
+              amount: intent.amount / 100,
+            });
+          } else {
+            this.gateway.emitPaymentConfirmed({
+              orderId,
+              orderNumber: currentOrder.orderNumber,
+              amount: intent.amount / 100,
+            });
+          }
+        }
       }
     }
 
@@ -379,7 +520,11 @@ export class PaymentsService {
     );
 
     if (intent.status === 'succeeded') {
-      if (order.payment.status !== PaymentStatus.PAID) {
+      if (
+        order.payment.status !== PaymentStatus.PAID
+        && order.payment.status !== PaymentStatus.REFUND_PENDING
+        && order.payment.status !== PaymentStatus.REFUNDED
+      ) {
         await this.prisma.payment.update({
           where: { id: order.payment.id },
           data: {
@@ -389,22 +534,30 @@ export class PaymentsService {
           },
         });
 
-        const updatedOrder = await this.prisma.order.update({
-          where: { id: orderId },
-          data: {
-            status: OrderStatus.CONFIRMED,
-          },
-          include: {
-            orderItems: true,
-          },
-        });
+        if (order.status === OrderStatus.PENDING) {
+          const updatedOrder = await this.prisma.order.update({
+            where: { id: orderId },
+            data: {
+              status: OrderStatus.CONFIRMED,
+            },
+            include: {
+              orderItems: true,
+            },
+          });
 
-        this.gateway.emitPaymentConfirmed({
-          orderId,
-          orderNumber: updatedOrder.orderNumber,
-          amount: intent.amount / 100,
-        });
-        this.gateway.emitStatusUpdate(updatedOrder);
+          this.gateway.emitPaymentConfirmed({
+            orderId,
+            orderNumber: updatedOrder.orderNumber,
+            amount: intent.amount / 100,
+          });
+          this.gateway.emitStatusUpdate(updatedOrder);
+        } else {
+          this.gateway.emitPaymentConfirmed({
+            orderId,
+            orderNumber: order.orderNumber,
+            amount: intent.amount / 100,
+          });
+        }
       }
 
       return { status: PaymentStatus.PAID };

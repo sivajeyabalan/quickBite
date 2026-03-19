@@ -105,6 +105,10 @@ export interface Payment {
   status:         string;
   transactionRef?: string;
   paidAt?:        string;
+  refundRef?:     string;
+  refundReason?:  string;
+  refundAmount?:  string;
+  refundedAt?:    string;
 }
 
 export interface TableAssignment {

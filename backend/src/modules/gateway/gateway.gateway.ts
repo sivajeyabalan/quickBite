@@ -73,6 +73,26 @@ export class kitchenGateway implements OnGatewayInit , OnGatewayConnection , OnG
     this.server.emit('payment:cashSelected', data)
   }
 
+  emitPaymentRefundPending(data: {
+    orderId: string;
+    orderNumber: string;
+    amount: number;
+    message: string;
+  }) {
+    this.logger.log(`Emitting payment:refundPending -> ${data.orderNumber}`)
+    this.server.emit('payment:refundPending', data)
+  }
+
+  emitPaymentRefunded(data: {
+    orderId: string;
+    orderNumber: string;
+    amount: number;
+    refundRef?: string;
+  }) {
+    this.logger.log(`Emitting payment:refunded -> ${data.orderNumber}`)
+    this.server.emit('payment:refunded', data)
+  }
+
   @SubscribeMessage('join:kitchen')
   handleJoinKitchen(@ConnectedSocket() client : Socket){
     client.join('kitchen-room')

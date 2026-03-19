@@ -117,11 +117,27 @@ export default function OrderTrackingPage() {
       }
     });
 
+    socket.on('payment:refundPending', (data: { orderId: string }) => {
+      if (data.orderId === id) {
+        queryClient.invalidateQueries({ queryKey: ['order', id] });
+        toast('Refund is pending staff/admin approval.');
+      }
+    });
+
+    socket.on('payment:refunded', (data: { orderId: string }) => {
+      if (data.orderId === id) {
+        queryClient.invalidateQueries({ queryKey: ['order', id] });
+        toast.success('Refund processed successfully');
+      }
+    });
+
     return () => {
       socket.off('order:statusUpdated');
       socket.off('payment:processing');
       socket.off('payment:confirmed');
       socket.off('payment:failed');
+      socket.off('payment:refundPending');
+      socket.off('payment:refunded');
     };
   }, [socket, id, queryClient]);
 

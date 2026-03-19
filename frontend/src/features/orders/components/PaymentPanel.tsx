@@ -7,6 +7,8 @@ import api from '../../../api/axios';
 import type { Order, PaymentMethod } from '../../../types';
 import StripePaymentForm from './StripePaymentForm';
 import Spinner from '../../../components/ui/Spinner';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../../../app/store';
 
 const stripePromise = loadStripe(
   import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY,
@@ -14,6 +16,8 @@ const stripePromise = loadStripe(
 
 export default function PaymentPanel({ order }: { order: Order }) {
   const queryClient = useQueryClient();
+  const user = useSelector((s: RootState) => s.auth.user);
+  const isStaffOrAdmin = user?.role === 'STAFF' || user?.role === 'ADMIN';
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>('CASH');
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [isLocallyPaid, setIsLocallyPaid] = useState(false);
@@ -54,6 +58,23 @@ export default function PaymentPanel({ order }: { order: Order }) {
     queryClient.invalidateQueries({ queryKey: ['order', order.id] });
     setClientSecret(null);
   };
+
+  const approveRefundMutation = useMutation({
+    mutationFn: () =>
+      api.patch(`/payments/orders/${order.id}/refund/approve`, {
+        reason: 'Approved by staff/admin from order tracking',
+      }),
+    onSuccess: () => {
+      toast.success('Refund approved and processed');
+      queryClient.invalidateQueries({ queryKey: ['order', order.id] });
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['kitchen-orders'] });
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Failed to approve refund');
+    },
+  });
 
   if (isLocallyPaid || (order.payment && order.payment.status === 'PAID')) {
     return (
@@ -114,6 +135,62 @@ export default function PaymentPanel({ order }: { order: Order }) {
             <span>Amount</span>
             <span className="font-bold">${Number(order.total).toFixed(2)}</span>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (order.payment?.status === 'REFUNDED') {
+    return (
+      <div className="bg-white rounded-2xl shadow-sm border
+                      border-gray-100 p-6">
+        <h2 className="font-semibold text-gray-700 mb-4">Payment</h2>
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 space-y-2">
+          <p className="text-emerald-700 font-semibold">Refund Completed</p>
+          <div className="text-sm text-gray-600 space-y-1">
+            <div className="flex justify-between">
+              <span>Refund Amount</span>
+              <span className="font-bold">${Number(order.payment.refundAmount ?? order.payment.amount ?? order.total).toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Status</span>
+              <span className="text-emerald-700 font-medium">REFUNDED</span>
+            </div>
+            {order.payment.refundedAt && (
+              <div className="flex justify-between">
+                <span>Refunded at</span>
+                <span>{new Date(order.payment.refundedAt).toLocaleTimeString()}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (order.payment?.status === 'REFUND_PENDING') {
+    return (
+      <div className="bg-white rounded-2xl shadow-sm border
+                      border-gray-100 p-6">
+        <h2 className="font-semibold text-gray-700 mb-4">Payment</h2>
+        <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 space-y-2">
+          <p className="text-orange-700 font-semibold">Refund Pending Approval</p>
+          <p className="text-sm text-gray-600">
+            Order is cancelled and refund is pending staff/admin approval.
+          </p>
+          <div className="text-sm text-gray-600 flex justify-between">
+            <span>Amount</span>
+            <span className="font-bold">${Number(order.payment.refundAmount ?? order.payment.amount ?? order.total).toFixed(2)}</span>
+          </div>
+          {isStaffOrAdmin && (
+            <button
+              onClick={() => approveRefundMutation.mutate()}
+              disabled={approveRefundMutation.isPending}
+              className="mt-2 w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2.5 rounded-xl transition disabled:opacity-50"
+            >
+              {approveRefundMutation.isPending ? <Spinner size="sm" /> : 'Approve Refund'}
+            </button>
+          )}
         </div>
       </div>
     );

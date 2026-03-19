@@ -167,9 +167,21 @@ export default function OrdersPage() {
 
               <div className="flex justify-between items-center pt-3
                               border-t border-gray-100">
-                <span className="font-bold text-orange-500">
-                  ${Number(order.total).toFixed(2)}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-orange-500">
+                    ${Number(order.total).toFixed(2)}
+                  </span>
+                  {order.payment?.status === 'REFUND_PENDING' && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-orange-100 text-orange-700">
+                      Refund Pending
+                    </span>
+                  )}
+                  {order.payment?.status === 'REFUNDED' && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700">
+                      Refunded
+                    </span>
+                  )}
+                </div>
                 <div className="flex flex-col items-end gap-1">
                   {!isAdminOrStaff && order.status === 'PENDING' && (
                     <p className="text-[11px] text-gray-400">

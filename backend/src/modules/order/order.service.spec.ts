@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { OrdersService } from './order.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { kitchenGateway } from '../gateway/gateway.gateway';
+import { PaymentsService } from '../payment/payment.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { OrderStatus, Role } from '@prisma/client';
 
@@ -29,6 +30,10 @@ const mockGateway = {
   emitStatusUpdate: jest.fn(),
 };
 
+const mockPaymentsService = {
+  markRefundPendingOnCancel: jest.fn(),
+};
+
 describe('OrdersService', () => {
   let service: OrdersService;
 
@@ -38,6 +43,7 @@ describe('OrdersService', () => {
         OrdersService,
         { provide: PrismaService,   useValue: mockPrisma   },
         { provide: kitchenGateway,  useValue: mockGateway  },
+        { provide: PaymentsService, useValue: mockPaymentsService },
       ],
     }).compile();
 
@@ -45,6 +51,7 @@ describe('OrdersService', () => {
     jest.clearAllMocks();
     mockPrisma.tableAssignment.findFirst.mockResolvedValue({ tableNumber: 'T1' });
     mockPrisma.order.findFirst.mockResolvedValue(null);
+    mockPaymentsService.markRefundPendingOnCancel.mockResolvedValue({ status: 'NO_PAYMENT' });
   });
 
   // ── Test 1 ────────────────────────────────────────
@@ -201,6 +208,7 @@ describe('OrdersService', () => {
         id: 'order-1',
         status: OrderStatus.CANCELLED,
         userId: 'user-1',
+        payment: null,
         orderItems: [],
       };
 
@@ -215,6 +223,10 @@ describe('OrdersService', () => {
 
       expect(result.status).toBe(OrderStatus.CANCELLED);
       expect(mockGateway.emitStatusUpdate).toHaveBeenCalledWith(updatedOrder);
+      expect(mockPaymentsService.markRefundPendingOnCancel).toHaveBeenCalledWith(
+        'order-1',
+        'ORDER_CANCELLED_BY_CUSTOMER',
+      );
     });
 
     it('should throw BadRequestException when customer cancels confirmed order', async () => {
@@ -249,25 +261,95 @@ describe('OrdersService', () => {
           id: 'order-1',
           orderNumber: 'QB-1001',
           status: OrderStatus.PENDING,
+          payment: null,
           orderItems: [],
         },
         {
           id: 'order-2',
           orderNumber: 'QB-1002',
           status: OrderStatus.PENDING,
+          payment: null,
           orderItems: [],
         },
       ]);
 
       mockPrisma.order.update
-        .mockResolvedValueOnce({ id: 'order-1', status: OrderStatus.CANCELLED, orderItems: [] })
-        .mockResolvedValueOnce({ id: 'order-2', status: OrderStatus.CANCELLED, orderItems: [] });
+        .mockResolvedValueOnce({ id: 'order-1', status: OrderStatus.CANCELLED, payment: null, orderItems: [] })
+        .mockResolvedValueOnce({ id: 'order-2', status: OrderStatus.CANCELLED, payment: null, orderItems: [] });
 
       const result = await service.autoCancelExpiredPendingOrders();
 
       expect(result).toBe(2);
       expect(mockPrisma.order.update).toHaveBeenCalledTimes(2);
       expect(mockGateway.emitStatusUpdate).toHaveBeenCalledTimes(2);
+      expect(mockPaymentsService.markRefundPendingOnCancel).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('refund orchestration edge case', () => {
+    it('should mark refund pending when admin cancels a PAID card order after rollback to PENDING', async () => {
+      mockPrisma.order.findUnique.mockResolvedValue({
+        id: 'order-1',
+        status: OrderStatus.PENDING,
+        userId: 'user-1',
+        payment: {
+          id: 'payment-1',
+          status: 'PAID',
+          method: 'CARD',
+        },
+      });
+
+      mockPrisma.order.update.mockResolvedValue({
+        id: 'order-1',
+        status: OrderStatus.CANCELLED,
+        payment: {
+          id: 'payment-1',
+          status: 'PAID',
+          method: 'CARD',
+        },
+        orderItems: [],
+      });
+
+      await service.cancel('order-1', 'admin-1', Role.ADMIN);
+
+      expect(mockPaymentsService.markRefundPendingOnCancel).toHaveBeenCalledWith(
+        'order-1',
+        'ORDER_CANCELLED_BY_STAFF',
+      );
+    });
+
+    it('should mark refund pending when status is updated directly to CANCELLED', async () => {
+      mockPrisma.order.findUnique.mockResolvedValue({
+        id: 'order-2',
+        status: OrderStatus.PENDING,
+        payment: {
+          id: 'payment-2',
+          status: 'PAID',
+          method: 'CARD',
+        },
+      });
+
+      mockPrisma.order.update.mockResolvedValue({
+        id: 'order-2',
+        status: OrderStatus.CANCELLED,
+        payment: {
+          id: 'payment-2',
+          status: 'PAID',
+          method: 'CARD',
+        },
+        orderItems: [],
+      });
+
+      await service.updateStatus(
+        'order-2',
+        { status: OrderStatus.CANCELLED },
+        Role.ADMIN,
+      );
+
+      expect(mockPaymentsService.markRefundPendingOnCancel).toHaveBeenCalledWith(
+        'order-2',
+        'ORDER_CANCELLED_BY_STAFF',
+      );
     });
   });
 });

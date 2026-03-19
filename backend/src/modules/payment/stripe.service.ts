@@ -53,4 +53,24 @@ export class StripeService {
   async retrievePaymentIntent(paymentIntentId: string): Promise<Stripe.PaymentIntent> {
     return this.stripe.paymentIntents.retrieve(paymentIntentId);
   }
+
+  async createRefund(
+    paymentIntentId: string,
+    idempotencyKey: string,
+    amountInCents?: number,
+    reason: Stripe.RefundCreateParams.Reason = 'requested_by_customer',
+  ): Promise<Stripe.Refund> {
+    const params: Stripe.RefundCreateParams = {
+      payment_intent: paymentIntentId,
+      reason,
+    };
+
+    if (amountInCents && amountInCents > 0) {
+      params.amount = amountInCents;
+    }
+
+    return this.stripe.refunds.create(params, {
+      idempotencyKey,
+    });
+  }
 }

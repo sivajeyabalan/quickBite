@@ -13,6 +13,7 @@ import { generateOrderNumber } from './helpers/order-helper';
 import { isItemOrderable } from '../menu/helpers/availability.helper';
 
 import { kitchenGateway } from '../gateway/gateway.gateway';
+import { PaymentsService } from '../payment/payment.service';
 
 const TAX_RATE = Number(process.env.TAX_RATE) || 0.10; // 10% tax — move to config in production
 const ORDER_ACCEPT_SLA_MINUTES = Number(process.env.ORDER_ACCEPT_SLA_MINUTES) || 5;
@@ -41,8 +42,10 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(OrdersService.name);
   private sweepTimer?: NodeJS.Timeout;
 
-  constructor(private readonly prisma: PrismaService ,
-    private readonly gateway : kitchenGateway
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly gateway: kitchenGateway,
+    private readonly paymentsService: PaymentsService,
   ) {}
 
   onModuleInit() {
@@ -311,7 +314,10 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
     dto: UpdateOrderStatusDto,
     userRole: Role,
   ) {
-    const order = await this.prisma.order.findUnique({ where: { id } });
+    const order = await this.prisma.order.findUnique({
+      where: { id },
+      include: { payment: true },
+    });
 
     if (!order) {
       throw new NotFoundException(`Order ${id} not found`);
@@ -345,8 +351,13 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
           status: OrderStatus.CANCELLED,
           cancelReason: 'AUTO_TIMEOUT',
         },
-        include: { orderItems: true },
+        include: { orderItems: true, payment: true },
       });
+
+      await this.paymentsService.markRefundPendingOnCancel(
+        cancelled.id,
+        'AUTO_TIMEOUT',
+      );
 
       this.gateway.emitStatusUpdate(cancelled);
 
@@ -375,8 +386,15 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
     const updated = await this.prisma.order.update({
       where: { id },
       data: statusUpdateData,
-      include: { orderItems: true },
+      include: { orderItems: true, payment: true },
     });
+
+    if (dto.status === OrderStatus.CANCELLED) {
+      await this.paymentsService.markRefundPendingOnCancel(
+        updated.id,
+        'ORDER_CANCELLED_BY_STAFF',
+      );
+    }
 
     //gateway : fire event after successful DB update
 
@@ -387,7 +405,10 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
   }
 
   async cancel(id: string, userId: string, userRole: Role) {
-    const order = await this.prisma.order.findUnique({ where: { id } });
+    const order = await this.prisma.order.findUnique({
+      where: { id },
+      include: { payment: true },
+    });
 
     if (!order) {
       throw new NotFoundException(`Order ${id} not found`);
@@ -417,8 +438,13 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
     const updated = await this.prisma.order.update({
       where: { id },
       data: { status: OrderStatus.CANCELLED },
-      include: { orderItems: true },
+      include: { orderItems: true, payment: true },
     });
+
+    await this.paymentsService.markRefundPendingOnCancel(
+      updated.id,
+      userRole === Role.CUSTOMER ? 'ORDER_CANCELLED_BY_CUSTOMER' : 'ORDER_CANCELLED_BY_STAFF',
+    );
 
     this.gateway.emitStatusUpdate(updated);
 
@@ -431,7 +457,7 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
         status: OrderStatus.PENDING,
         acceptBy: { lte: new Date() },
       },
-      include: { orderItems: true },
+      include: { orderItems: true, payment: true },
     });
 
     if (expiredPendingOrders.length === 0) return 0;
@@ -443,8 +469,13 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
           status: OrderStatus.CANCELLED,
           cancelReason: 'AUTO_TIMEOUT',
         },
-        include: { orderItems: true },
+        include: { orderItems: true, payment: true },
       });
+
+      await this.paymentsService.markRefundPendingOnCancel(
+        cancelled.id,
+        'AUTO_TIMEOUT',
+      );
 
       this.gateway.emitStatusUpdate(cancelled);
       this.logger.log(`Auto-cancelled expired pending order ${order.orderNumber}`);

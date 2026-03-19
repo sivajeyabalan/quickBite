@@ -34,6 +34,7 @@ enum PaymentStatus {
   PENDING
   PAID
   FAILED
+  REFUND_PENDING
   REFUNDED
 }
 
@@ -188,6 +189,10 @@ model Payment {
   transactionRef String?       @map("transaction_ref")
   stripePaymentIntentId String? @map("stripe_payment_intent_id")
   paidAt         DateTime?     @map("paid_at")
+  refundRef      String?       @map("refund_ref")
+  refundReason   String?       @map("refund_reason")
+  refundAmount   Decimal?      @db.Decimal(10, 2) @map("refund_amount")
+  refundedAt     DateTime?     @map("refunded_at")
   orderId        String        @unique @map("order_id")
   createdAt      DateTime      @default(now()) @map("created_at")
 
