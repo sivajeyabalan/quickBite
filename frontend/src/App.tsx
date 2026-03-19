@@ -20,7 +20,8 @@ import CartDrawer from './features/cart/CartDrawer';
 
 export default function App() {
   const dispatch   = useDispatch<AppDispatch>();
-  const { restoring } = useSelector((s: RootState) => s.auth);
+  const { restoring, user, accessToken } = useSelector((s: RootState) => s.auth);
+  const roleHomePath = user?.role === 'STAFF' ? '/kitchen' : user?.role === 'ADMIN' ? '/admin' : '/';
   // On app load — try to restore session via refresh cookie
   useEffect(() => {
     const restoreSession = async () => {
@@ -47,27 +48,33 @@ export default function App() {
       <CartDrawer />
       <Routes>
         {/* Public */}
-        <Route path="/login"    element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/login"    element={accessToken ? <Navigate to={roleHomePath} replace /> : <LoginPage />} />
+        <Route path="/register" element={accessToken ? <Navigate to={roleHomePath} replace /> : <RegisterPage />} />
 
         {/* Customer */}
         <Route path="/" element={
-          <ProtectedRoute roles={['CUSTOMER', 'STAFF', 'ADMIN']}>
-            <MenuPage />
+            <ProtectedRoute roles={['CUSTOMER', 'STAFF', 'ADMIN']}>
+            {user?.role === 'STAFF' ? (
+              <Navigate to="/kitchen" replace />
+            ) : user?.role === 'ADMIN' ? (
+              <Navigate to="/admin" replace />
+            ) : (
+              <MenuPage />
+            )}
           </ProtectedRoute>
         } />
         <Route path="/orders" element={
-          <ProtectedRoute roles={['CUSTOMER', 'STAFF', 'ADMIN']}>
+            <ProtectedRoute roles={['CUSTOMER']}>
             <OrdersPage />
           </ProtectedRoute>
         } />
         <Route path="/orders/:id" element={
-          <ProtectedRoute roles={['CUSTOMER', 'STAFF', 'ADMIN']}>
+            <ProtectedRoute roles={['CUSTOMER']}>
             <OrderTrackingPage />
           </ProtectedRoute>
         } />
         <Route path="/addresses" element={
-          <ProtectedRoute roles={['CUSTOMER', 'STAFF', 'ADMIN']}>
+            <ProtectedRoute roles={['CUSTOMER']}>
             <AddressesPage />
           </ProtectedRoute>
         } />
@@ -86,7 +93,7 @@ export default function App() {
           </ProtectedRoute>
         } />
 
-        <Route path="*" element={<Navigate to="/" />} />
+        <Route path="*" element={<Navigate to={roleHomePath} replace />} />
       </Routes>
     </BrowserRouter>
   );

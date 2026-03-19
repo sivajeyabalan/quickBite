@@ -51,8 +51,12 @@ export default function Navbar() {
 
         {/* Nav Links */}
         <div className="flex items-center gap-6 text-sm font-medium text-gray-600">
-          <Link to="/" className="hover:text-orange-500 transition">Menu</Link>
-          <Link to="/orders" className="hover:text-orange-500 transition">My Orders</Link>
+          {!isStaff && !isAdmin && (
+            <>
+              <Link to="/" className="hover:text-orange-500 transition">Menu</Link>
+              <Link to="/orders" className="hover:text-orange-500 transition">My Orders</Link>
+            </>
+          )}
           {!isStaff && !isAdmin && (
             <Link to="/addresses" className="hover:text-orange-500 transition">Address Book</Link>
           )}

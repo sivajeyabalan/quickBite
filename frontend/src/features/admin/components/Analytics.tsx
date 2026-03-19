@@ -93,19 +93,19 @@ export default function Analytics() {
           {
             label: 'Total Revenue',
             value: `$${data.totalRevenue.toFixed(2)}`,
-            icon:  '💰',
+            icon:  '',
             color: 'text-green-600',
           },
           {
             label: 'Total Orders',
             value: data.totalOrders,
-            icon:  '📋',
+            icon:  '',
             color: 'text-blue-600',
           },
           {
             label: 'Avg Order Value',
             value: `$${data.avgOrderValue.toFixed(2)}`,
-            icon:  '📈',
+            icon:  '',
             color: 'text-purple-600',
           },
         ].map(card => (
@@ -126,7 +126,7 @@ export default function Analytics() {
         <div className="bg-white rounded-2xl border border-gray-100
                         shadow-sm p-5">
           <h2 className="font-semibold text-gray-700 mb-4">
-            🏆 Top 5 Items
+             TOP 5 ITEMS
           </h2>
           {data.topItems.length === 0 ? (
             <p className="text-gray-400 text-sm">No data yet</p>
@@ -160,7 +160,7 @@ export default function Analytics() {
         <div className="bg-white rounded-2xl border border-gray-100
                         shadow-sm p-5">
           <h2 className="font-semibold text-gray-700 mb-4">
-            📊 Order Status Breakdown
+            ORDER STATUS BREAKDOWN
           </h2>
           {data.statusBreakdown.length === 0 ? (
             <p className="text-gray-400 text-sm">No data yet</p>
@@ -185,7 +185,7 @@ export default function Analytics() {
       <div className="bg-white rounded-2xl border border-gray-100
                       shadow-sm p-5">
         <h2 className="font-semibold text-gray-700 mb-4">
-          🕐 Revenue by Hour
+          Revenue by Hour
         </h2>
         <div className="flex items-end gap-1 h-24">
           {data.revenueByHour.map(({ hour, revenue }) => (

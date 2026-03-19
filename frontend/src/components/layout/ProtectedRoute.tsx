@@ -12,7 +12,11 @@ export default function ProtectedRoute({ children, roles }: Props) {
   const { user, accessToken } = useSelector((s: RootState) => s.auth);
 
   if (!accessToken) return <Navigate to="/login" replace />;
-  if (user && !roles.includes(user.role)) return <Navigate to="/" replace />;
+  if (user && !roles.includes(user.role)) {
+    if (user.role === 'STAFF') return <Navigate to="/kitchen" replace />;
+    if (user.role === 'ADMIN') return <Navigate to="/admin" replace />;
+    return <Navigate to="/" replace />;
+  }
 
   return <>{children}</>;
 }

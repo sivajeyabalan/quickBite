@@ -10,10 +10,10 @@ import { PENDING_REFUND_COUNT_QUERY_KEY, usePendingRefundCount } from '../../hoo
 type Tab = 'analytics' | 'menu' | 'orders' | 'users';
 
 const TABS: { key: Tab; label: string }[] = [
-  { key: 'analytics', label: '📊 Analytics'  },
-  { key: 'menu',      label: '🍽 Menu CRUD'   },
-  { key: 'orders',    label: '📋 Orders'      },
-  { key: 'users',     label: '👥 Users'       },
+  { key: 'analytics', label: ' ANALYTICS'  },
+  { key: 'menu',      label: ' MENU CRUD'   },
+  { key: 'orders',    label: ' ORDERS'      },
+  { key: 'users',     label: ' USERS'       },
 ];
 
 export default function AdminDashboard() {

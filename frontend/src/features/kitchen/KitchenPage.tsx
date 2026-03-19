@@ -327,10 +327,10 @@ export default function KitchenPage() {
   const ready     = filteredOrders.filter(o => o.status === 'READY');
 
   const columns = [
-    { label: '⏳ Pending',   count: pending.length,   orders: pending,   color: 'text-yellow-600' },
-    { label: '✅ Confirmed', count: confirmed.length, orders: confirmed, color: 'text-blue-600'   },
-    { label: '👨‍🍳 Preparing', count: preparing.length, orders: preparing, color: 'text-purple-600' },
-    { label: '🔔 Ready',     count: ready.length,     orders: ready,     color: 'text-green-600'  },
+    { label: ' PENDING',   count: pending.length,   orders: pending,   color: 'text-yellow-600' },
+    { label: ' CONFIRMED', count: confirmed.length, orders: confirmed, color: 'text-blue-600'   },
+    { label: ' PREPARING', count: preparing.length, orders: preparing, color: 'text-purple-600' },
+    { label: ' READY',     count: ready.length,     orders: ready,     color: 'text-green-600'  },
   ];
 
   if (isLoading) return (
@@ -346,7 +346,7 @@ export default function KitchenPage() {
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">
-            🍽 Kitchen Display
+             Kitchen Display
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">
             {filteredOrders.length} active order{filteredOrders.length !== 1 ? 's' : ''}
