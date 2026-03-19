@@ -10,9 +10,13 @@ const mockPrisma = {
   menuItem: {
     findMany: jest.fn(),
   },
+  tableAssignment: {
+    findFirst: jest.fn(),
+  },
   order: {
     count:  jest.fn(),
     create: jest.fn(),
+    findFirst: jest.fn(),
     findUnique: jest.fn(),
     findMany:   jest.fn(),
     update:     jest.fn(),
@@ -39,6 +43,8 @@ describe('OrdersService', () => {
 
     service = module.get<OrdersService>(OrdersService);
     jest.clearAllMocks();
+    mockPrisma.tableAssignment.findFirst.mockResolvedValue({ tableNumber: 'T1' });
+    mockPrisma.order.findFirst.mockResolvedValue(null);
   });
 
   // ── Test 1 ────────────────────────────────────────
@@ -50,7 +56,6 @@ describe('OrdersService', () => {
         service.create(
           {
             items: [{ menuItemId: 'fake-id', quantity: 1 }],
-            tableNumber: 'T1',
           },
           'user-id',
         ),
@@ -107,6 +112,86 @@ describe('OrdersService', () => {
       expect(result.status).toBe(OrderStatus.CONFIRMED);
       expect(mockGateway.emitStatusUpdate).toHaveBeenCalledTimes(1);
     });
+
+    it('should allow valid backward PREPARING → CONFIRMED transition', async () => {
+      const mockOrder = {
+        id: 'order-1', status: OrderStatus.PREPARING, orderItems: [],
+      };
+
+      mockPrisma.order.findUnique.mockResolvedValue(mockOrder);
+      mockPrisma.order.update.mockResolvedValue({
+        ...mockOrder, status: OrderStatus.CONFIRMED,
+      });
+
+      const result = await service.updateStatus(
+        'order-1',
+        { status: OrderStatus.CONFIRMED },
+        Role.ADMIN,
+      );
+
+      expect(result.status).toBe(OrderStatus.CONFIRMED);
+      expect(mockGateway.emitStatusUpdate).toHaveBeenCalledTimes(1);
+    });
+
+    it('should reset SLA window when moving CONFIRMED → PENDING', async () => {
+      mockPrisma.order.findUnique.mockResolvedValue({
+        id: 'order-1',
+        status: OrderStatus.CONFIRMED,
+      });
+
+      mockPrisma.order.update.mockResolvedValue({
+        id: 'order-1',
+        status: OrderStatus.PENDING,
+        orderItems: [],
+      });
+
+      await service.updateStatus(
+        'order-1',
+        { status: OrderStatus.PENDING },
+        Role.ADMIN,
+      );
+
+      expect(mockPrisma.order.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            status: OrderStatus.PENDING,
+            acceptedAt: null,
+          }),
+        }),
+      );
+    });
+
+    it('should auto-cancel if confirming after SLA acceptBy window', async () => {
+      mockPrisma.order.findUnique.mockResolvedValue({
+        id: 'order-1',
+        status: OrderStatus.PENDING,
+        acceptBy: new Date(Date.now() - 60_000),
+      });
+
+      mockPrisma.order.update.mockResolvedValue({
+        id: 'order-1',
+        status: OrderStatus.CANCELLED,
+        orderItems: [],
+      });
+
+      await expect(
+        service.updateStatus(
+          'order-1',
+          { status: OrderStatus.CONFIRMED },
+          Role.ADMIN,
+        ),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(mockPrisma.order.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            status: OrderStatus.CANCELLED,
+            cancelReason: 'AUTO_TIMEOUT',
+          }),
+        }),
+      );
+      expect(mockGateway.emitStatusUpdate).toHaveBeenCalledTimes(1);
+    });
   });
 
   // ── Test 3 ────────────────────────────────────────
@@ -154,6 +239,35 @@ describe('OrdersService', () => {
       await expect(
         service.cancel('order-1', 'user-1', Role.CUSTOMER),
       ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('autoCancelExpiredPendingOrders', () => {
+    it('should cancel all expired pending orders with AUTO_TIMEOUT reason', async () => {
+      mockPrisma.order.findMany.mockResolvedValue([
+        {
+          id: 'order-1',
+          orderNumber: 'QB-1001',
+          status: OrderStatus.PENDING,
+          orderItems: [],
+        },
+        {
+          id: 'order-2',
+          orderNumber: 'QB-1002',
+          status: OrderStatus.PENDING,
+          orderItems: [],
+        },
+      ]);
+
+      mockPrisma.order.update
+        .mockResolvedValueOnce({ id: 'order-1', status: OrderStatus.CANCELLED, orderItems: [] })
+        .mockResolvedValueOnce({ id: 'order-2', status: OrderStatus.CANCELLED, orderItems: [] });
+
+      const result = await service.autoCancelExpiredPendingOrders();
+
+      expect(result).toBe(2);
+      expect(mockPrisma.order.update).toHaveBeenCalledTimes(2);
+      expect(mockGateway.emitStatusUpdate).toHaveBeenCalledTimes(2);
     });
   });
 });

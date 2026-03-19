@@ -27,11 +27,9 @@ export class PaymentsController {
   @Post('stripe/intent')
   createStripeIntent(
     @Body('orderId') orderId: string,
-    @Body('method') method?: 'CARD' | 'QR',
   ) {
     return this.paymentsService.createStripePaymentIntent(
       orderId,
-      method,
     );
   }
 

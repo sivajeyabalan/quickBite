@@ -111,7 +111,21 @@ export class MenuController {
   toggleAvailability(@Param('id') id: string) {
     return this.menuService.toggleAvailability(id);
   }
+  @ApiOperation({ summary: 'Toggle 86 status (out/back in) — staff quick action' })
+  @ApiParam({ name: 'id', type: String, description: 'Menu item UUID' })
+  @Patch(':id/toggle-86')
+  @Roles('STAFF', 'ADMIN')
+  toggle86(@Param('id') id: string) {
+    return this.menuService.toggle86(id);
+  }
 
+  @ApiOperation({ summary: 'Update stock quantity (staff/admin)' })
+  @ApiParam({ name: 'id', type: String, description: 'Menu item UUID' })
+  @Patch(':id/stock')
+  @Roles('STAFF', 'ADMIN')
+  updateStock(@Param('id') id: string, @Body() dto: { stockQty: number }) {
+    return this.menuService.updateStock(id, dto.stockQty);
+  }
   @ApiOperation({ summary: 'Smart-delete: hard-delete if no order refs, soft-delete otherwise (admin only)' })
   @ApiParam({ name: 'id', type: String, description: 'Menu item UUID' })
   @Delete(':id')

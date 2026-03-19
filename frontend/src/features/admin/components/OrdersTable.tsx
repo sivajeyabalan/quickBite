@@ -1,15 +1,32 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../../../api/axios';
 import type { Order, OrderStatus } from '../../../types';
 import Spinner from '../../../components/ui/Spinner';
+import { useSocket } from '../../../hooks/useSocket';
 
 const STATUS_OPTIONS: OrderStatus[] = [
   'PENDING', 'CONFIRMED', 'PREPARING',
   'READY', 'SERVED', 'COMPLETED', 'CANCELLED',
 ];
+
+const ALLOWED_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
+  PENDING: ['CONFIRMED', 'CANCELLED'],
+  CONFIRMED: ['PENDING', 'PREPARING', 'CANCELLED'],
+  PREPARING: ['CONFIRMED', 'READY'],
+  READY: ['PREPARING', 'SERVED'],
+  SERVED: ['READY', 'COMPLETED'],
+  COMPLETED: ['SERVED'],
+  CANCELLED: [],
+};
+
+const ORDER_TYPE_LABEL = {
+  FINE_DINE: 'Fine Dine',
+  PICKUP: 'Pickup',
+  DELIVERY: 'Delivery',
+} as const;
 
 const STATUS_COLORS: Record<OrderStatus, string> = {
   PENDING:   'bg-yellow-100 text-yellow-700',
@@ -32,6 +49,7 @@ const fetchAllOrders = async (status?: string, date?: string) => {
 export default function OrdersTable() {
   const queryClient = useQueryClient();
   const navigate    = useNavigate();
+  const socket      = useSocket();
 
   const [filterStatus, setFilterStatus] = useState('');
   const [filterDate,   setFilterDate]   = useState('');
@@ -39,6 +57,7 @@ export default function OrdersTable() {
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ['admin-orders', filterStatus, filterDate],
     queryFn:  () => fetchAllOrders(filterStatus, filterDate),
+    refetchOnMount: 'always',
   });
 
   const statusMutation = useMutation({
@@ -52,6 +71,23 @@ export default function OrdersTable() {
       toast.error(err.response?.data?.message || 'Failed to update status');
     },
   });
+
+  useEffect(() => {
+    if (!socket) return;
+
+    socket.on('order:new', () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
+    });
+
+    socket.on('order:statusUpdated', () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
+    });
+
+    return () => {
+      socket.off('order:new');
+      socket.off('order:statusUpdated');
+    };
+  }, [socket, queryClient]);
 
   if (isLoading) return (
     <div className="flex justify-center py-20"><Spinner size="lg" /></div>
@@ -98,7 +134,7 @@ export default function OrdersTable() {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-100">
             <tr>
-              {['Order', 'Customer', 'Table', 'Items', 'Total',
+              {['Order', 'Customer', 'Type / Table', 'Items', 'Total',
                 'Status', 'Time', 'Actions'].map(h => (
                 <th key={h}
                     className="text-left px-4 py-3 text-xs font-semibold
@@ -118,7 +154,8 @@ export default function OrdersTable() {
                   {order.user?.name || '—'}
                 </td>
                 <td className="px-4 py-3 text-gray-500">
-                  {order.tableNumber || '—'}
+                  {ORDER_TYPE_LABEL[order.orderType]}
+                  {order.orderType === 'FINE_DINE' ? ` · ${order.tableNumber || '—'}` : ''}
                 </td>
                 <td className="px-4 py-3 text-gray-500">
                   {order.orderItems.length} item
@@ -146,8 +183,8 @@ export default function OrdersTable() {
                       View
                     </button>
 
-                    {/* Quick status advance */}
-                    {!['COMPLETED', 'CANCELLED'].includes(order.status) && (
+                    {/* Valid status transitions only */}
+                    {ALLOWED_TRANSITIONS[order.status].length > 0 && (
                       <select
                         defaultValue=""
                         onChange={e => {
@@ -163,7 +200,7 @@ export default function OrdersTable() {
                                    px-1 py-1 outline-none"
                       >
                         <option value="" disabled>Set status</option>
-                        {STATUS_OPTIONS.map(s => (
+                        {ALLOWED_TRANSITIONS[order.status].map(s => (
                           <option key={s} value={s}>{s}</option>
                         ))}
                       </select>

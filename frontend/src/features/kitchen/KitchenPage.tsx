@@ -3,12 +3,24 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import { useSocket } from '../../hooks/useSocket';
-import type { Order, OrderStatus } from '../../types';
+import type { Order, OrderStatus, OrderType } from '../../types';
 import Spinner from '../../components/ui/Spinner';
 
 // ─── Constants ────────────────────────────────────────
 
 const ACTIVE_STATUSES: OrderStatus[] = ['PENDING', 'CONFIRMED', 'PREPARING', 'READY'];
+const ORDER_TYPE_TABS: { label: string; value: 'ALL' | OrderType }[] = [
+  { label: 'All', value: 'ALL' },
+  { label: 'Fine Dine', value: 'FINE_DINE' },
+  { label: 'Pickup', value: 'PICKUP' },
+  { label: 'Delivery', value: 'DELIVERY' },
+];
+
+const ORDER_TYPE_LABEL: Record<OrderType, string> = {
+  FINE_DINE: 'Fine Dine',
+  PICKUP: 'Pickup',
+  DELIVERY: 'Delivery',
+};
 
 const STATUS_COLORS: Record<string, string> = {
   PENDING:   'border-yellow-400 bg-yellow-50',
@@ -29,6 +41,7 @@ const NEXT_STATUS: Partial<Record<OrderStatus, OrderStatus>> = {
   CONFIRMED: 'PREPARING',
   PREPARING: 'READY',
   READY:     'SERVED',
+  SERVED:    'COMPLETED',
 };
 
 const NEXT_LABEL: Partial<Record<OrderStatus, string>> = {
@@ -36,6 +49,23 @@ const NEXT_LABEL: Partial<Record<OrderStatus, string>> = {
   CONFIRMED: 'Start Preparing',
   PREPARING: 'Mark Ready',
   READY:     'Mark Served',
+  SERVED:    'Mark Completed',
+};
+
+const PREV_STATUS: Partial<Record<OrderStatus, OrderStatus>> = {
+  CONFIRMED: 'PENDING',
+  PREPARING: 'CONFIRMED',
+  READY:     'PREPARING',
+  SERVED:    'READY',
+  COMPLETED: 'SERVED',
+};
+
+const PREV_LABEL: Partial<Record<OrderStatus, string>> = {
+  CONFIRMED: 'Move Back to Pending',
+  PREPARING: 'Move Back to Confirmed',
+  READY:     'Move Back to Preparing',
+  SERVED:    'Move Back to Ready',
+  COMPLETED: 'Move Back to Served',
 };
 
 // ─── API ─────────────────────────────────────────────
@@ -52,14 +82,18 @@ const fetchActiveOrders = async (): Promise<Order[]> => {
 function OrderCard({
   order,
   onAdvance,
+  onRetreat,
   advancing,
 }: {
   order:     Order;
   onAdvance: (id: string, status: OrderStatus) => void;
+  onRetreat: (id: string, status: OrderStatus) => void;
   advancing: string | null;
 }) {
   const nextStatus = NEXT_STATUS[order.status];
   const nextLabel  = NEXT_LABEL[order.status];
+  const prevStatus = PREV_STATUS[order.status];
+  const prevLabel  = PREV_LABEL[order.status];
 
   // Time since order was placed
   const minutesAgo = Math.floor(
@@ -77,8 +111,18 @@ function OrderCard({
             {order.orderNumber}
           </h3>
           <p className="text-sm text-gray-500 mt-0.5">
-            Table {order.tableNumber || 'N/A'} · {minutesAgo}m ago
+            {ORDER_TYPE_LABEL[order.orderType]} {order.orderType === 'FINE_DINE' ? `· Table ${order.tableNumber || 'N/A'}` : ''} · {minutesAgo}m ago
           </p>
+          {order.payment?.method === 'CASH' && order.payment?.status === 'PENDING' && (
+            <span className="inline-block mt-2 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-700 border border-amber-200">
+              Collect Payment
+            </span>
+          )}
+          {order.payment?.status === 'PAID' && (
+            <span className="inline-block mt-2 px-2.5 py-1 rounded-full text-[11px] font-bold bg-green-100 text-green-700 border border-green-200">
+              Paid
+            </span>
+          )}
         </div>
         <span className={`px-3 py-1 rounded-full text-xs font-bold
                           ${STATUS_BADGE[order.status]}`}>
@@ -119,22 +163,40 @@ function OrderCard({
         </div>
       )}
 
-      {/* Advance Button */}
-      {nextStatus && nextLabel && (
-        <button
-          onClick={() => onAdvance(order.id, nextStatus)}
-          disabled={advancing === order.id}
-          className="w-full py-2.5 rounded-xl font-semibold text-sm
-                     bg-white hover:bg-gray-50 border border-gray-200
-                     text-gray-700 transition shadow-sm
-                     disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {advancing === order.id
-            ? <Spinner size="sm" />
-            : `→ ${nextLabel}`
-          }
-        </button>
-      )}
+      {/* Transition Buttons */}
+      <div className="space-y-2">
+        {nextStatus && nextLabel && (
+          <button
+            onClick={() => onAdvance(order.id, nextStatus)}
+            disabled={advancing === order.id}
+            className="w-full py-2.5 rounded-xl font-semibold text-sm
+                       bg-white hover:bg-gray-50 border border-gray-200
+                       text-gray-700 transition shadow-sm
+                       disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {advancing === order.id
+              ? <Spinner size="sm" />
+              : `→ ${nextLabel}`
+            }
+          </button>
+        )}
+
+        {prevStatus && prevLabel && (
+          <button
+            onClick={() => onRetreat(order.id, prevStatus)}
+            disabled={advancing === order.id}
+            className="w-full py-2.5 rounded-xl font-semibold text-sm
+                       bg-white hover:bg-gray-50 border border-gray-200
+                       text-gray-500 transition shadow-sm
+                       disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {advancing === order.id
+              ? <Spinner size="sm" />
+              : `← ${prevLabel}`
+            }
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -145,6 +207,7 @@ export default function KitchenPage() {
   const queryClient           = useQueryClient();
   const socket                = useSocket();
   const [advancing, setAdvancing] = useState<string | null>(null);
+  const [orderTypeFilter, setOrderTypeFilter] = useState<'ALL' | OrderType>('ALL');
 
   // Fetch active orders on mount
   const { data: orders = [], isLoading } = useQuery({
@@ -180,15 +243,41 @@ export default function KitchenPage() {
         ['kitchen-orders'],
         (prev: Order[] = []) =>
           prev
-            .map(o => o.id === updated.id ? updated : o)
+            .map(o => {
+              if (o.id !== updated.id) return o;
+              return {
+                ...updated,
+                payment: updated.payment ?? o.payment,
+              };
+            })
             // Remove from KDS if no longer active
             .filter(o => ACTIVE_STATUSES.includes(o.status)),
       );
     });
 
+    socket.on('payment:cashSelected', (data: {
+      orderId: string;
+      orderNumber: string;
+      message: string;
+    }) => {
+      toast(`💵 ${data.orderNumber}: ${data.message}`, { duration: 5000 });
+      queryClient.invalidateQueries({ queryKey: ['kitchen-orders'] });
+    });
+
+    socket.on('payment:confirmed', () => {
+      queryClient.invalidateQueries({ queryKey: ['kitchen-orders'] });
+    });
+
+    socket.on('payment:failed', () => {
+      queryClient.invalidateQueries({ queryKey: ['kitchen-orders'] });
+    });
+
     return () => {
       socket.off('order:new');
       socket.off('order:statusUpdated');
+      socket.off('payment:cashSelected');
+      socket.off('payment:confirmed');
+      socket.off('payment:failed');
     };
   }, [socket, queryClient]);
 
@@ -208,10 +297,14 @@ export default function KitchenPage() {
   };
 
   // ── Group by Status ───────────────────────────────
-  const pending   = orders.filter(o => o.status === 'PENDING');
-  const confirmed = orders.filter(o => o.status === 'CONFIRMED');
-  const preparing = orders.filter(o => o.status === 'PREPARING');
-  const ready     = orders.filter(o => o.status === 'READY');
+  const filteredOrders = orders.filter(order =>
+    orderTypeFilter === 'ALL' ? true : order.orderType === orderTypeFilter,
+  );
+
+  const pending   = filteredOrders.filter(o => o.status === 'PENDING');
+  const confirmed = filteredOrders.filter(o => o.status === 'CONFIRMED');
+  const preparing = filteredOrders.filter(o => o.status === 'PREPARING');
+  const ready     = filteredOrders.filter(o => o.status === 'READY');
 
   const columns = [
     { label: '⏳ Pending',   count: pending.length,   orders: pending,   color: 'text-yellow-600' },
@@ -236,7 +329,7 @@ export default function KitchenPage() {
             🍽 Kitchen Display
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            {orders.length} active order{orders.length !== 1 ? 's' : ''}
+            {filteredOrders.length} active order{filteredOrders.length !== 1 ? 's' : ''}
           </p>
         </div>
 
@@ -249,8 +342,24 @@ export default function KitchenPage() {
         </div>
       </div>
 
+      <div className="mb-5 flex flex-wrap gap-2">
+        {ORDER_TYPE_TABS.map(tab => (
+          <button
+            key={tab.value}
+            onClick={() => setOrderTypeFilter(tab.value)}
+            className={`px-3 py-1.5 text-sm rounded-full border font-medium transition ${
+              orderTypeFilter === tab.value
+                ? 'border-orange-500 bg-orange-50 text-orange-600'
+                : 'border-gray-200 bg-white text-gray-600 hover:border-orange-300'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
       {/* Empty State */}
-      {orders.length === 0 && (
+      {filteredOrders.length === 0 && (
         <div className="text-center py-24 text-gray-400">
           <p className="text-5xl mb-4">🎉</p>
           <p className="text-lg font-medium">All caught up!</p>
@@ -295,6 +404,7 @@ export default function KitchenPage() {
                       key={order.id}
                       order={order}
                       onAdvance={handleAdvance}
+                      onRetreat={handleAdvance}
                       advancing={advancing}
                     />
                   ))

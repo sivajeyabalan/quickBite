@@ -1,16 +1,16 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import  type { CartItem } from '../../types';
+import  type { CartItem, OrderType } from '../../types';
 
 interface CartState {
   items:       CartItem[];
   isOpen:      boolean;
-  tableNumber: string;
+  orderType:   OrderType;
 }
 
 const initialState: CartState = {
   items:       [],
   isOpen:      false,
-  tableNumber: '',
+  orderType:   'FINE_DINE',
 };
 
 const cartSlice = createSlice({
@@ -44,28 +44,29 @@ const cartSlice = createSlice({
 
     clearCart(state) {
       state.items = [];
+      state.orderType = 'FINE_DINE';
     },
 
     toggleCart(state) {
       state.isOpen = !state.isOpen;
     },
 
-    setTableNumber(state, action: PayloadAction<string>) {
-      state.tableNumber = action.payload;
+    setOrderType(state, action: PayloadAction<OrderType>) {
+      state.orderType = action.payload;
     },
   },
 });
 
 export const {
   addItem, removeItem, updateQuantity,
-  clearCart, toggleCart, setTableNumber,
+  clearCart, toggleCart, setOrderType,
 } = cartSlice.actions;
 
 // ─── Selectors ────────────────────────────────────────
 
 export const selectCartItems    = (state: any) => state.cart.items;
 export const selectCartOpen     = (state: any) => state.cart.isOpen;
-export const selectTableNumber  = (state: any) => state.cart.tableNumber;
+export const selectOrderType    = (state: any) => state.cart.orderType;
 
 export const selectCartTotal = (state: any) =>
   state.cart.items.reduce(

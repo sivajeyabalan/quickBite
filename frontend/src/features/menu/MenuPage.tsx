@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../api/axios';
 import type { MenuItem, Category } from '../../types';
@@ -27,9 +27,14 @@ const fetchMenuItems = async (
 // ─── Component ───────────────────────────────────────
 
 export default function MenuPage() {
+  const INITIAL_VISIBLE_ITEMS = 16;
+  const LOAD_MORE_STEP = 12;
+
   const [selectedCategory, setSelectedCategory] = useState('');
   const [search, setSearch]                     = useState('');
   const [selectedItem, setSelectedItem]         = useState<MenuItem | null>(null);
+  const [visibleCount, setVisibleCount]         = useState(INITIAL_VISIBLE_ITEMS);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   // Fetch categories
   const { data: categories = [] } = useQuery({
@@ -42,6 +47,33 @@ export default function MenuPage() {
     queryKey: ['menu', selectedCategory, search],
     queryFn:  () => fetchMenuItems(selectedCategory, search),
   });
+
+  const visibleItems = useMemo(
+    () => items.slice(0, visibleCount),
+    [items, visibleCount],
+  );
+
+  useEffect(() => {
+    setVisibleCount(INITIAL_VISIBLE_ITEMS);
+  }, [selectedCategory, search]);
+
+  useEffect(() => {
+    const hasMore = visibleCount < items.length;
+    if (!hasMore || !loadMoreRef.current) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (!entry.isIntersecting) return;
+
+        setVisibleCount(prev => Math.min(prev + LOAD_MORE_STEP, items.length));
+      },
+      { rootMargin: '400px' },
+    );
+
+    observer.observe(loadMoreRef.current);
+    return () => observer.disconnect();
+  }, [visibleCount, items.length]);
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-6 flex gap-6">
@@ -154,15 +186,23 @@ export default function MenuPage() {
             <p className="text-sm mt-1">Try a different category or search term</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {items.map(item => (
-              <ItemCard
-                key={item.id}
-                item={item}
-                onClick={setSelectedItem}
-              />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              {visibleItems.map(item => (
+                <ItemCard
+                  key={item.id}
+                  item={item}
+                  onClick={setSelectedItem}
+                />
+              ))}
+            </div>
+
+            {visibleCount < items.length && (
+              <div ref={loadMoreRef} className="py-6 text-center text-sm text-gray-400">
+                Loading more items...
+              </div>
+            )}
+          </>
         )}
       </main>
 

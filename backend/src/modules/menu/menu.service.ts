@@ -134,4 +134,22 @@ export class MenuService {
       data: { isAvailable: !item.isAvailable },
     });
   }
+
+  async toggle86(id: string) {
+    const item = await this.findOne(id);
+    return this.prisma.menuItem.update({
+      where: { id },
+      data: { is86d: !item.is86d },
+      include: { category: { select: { id: true, name: true } } },
+    });
+  }
+
+  async updateStock(id: string, stockQty: number) {
+    const item = await this.findOne(id);
+    return this.prisma.menuItem.update({
+      where: { id },
+      data: { stockQty },
+      include: { category: { select: { id: true, name: true } } },
+    });
+  }
 }

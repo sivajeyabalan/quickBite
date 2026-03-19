@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
-import { OrderStatus, Role } from '@prisma/client';
+import { OrderStatus, OrderType, Role } from '@prisma/client';
 import { OrdersService } from './order.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order.dto';
@@ -24,14 +24,16 @@ export class OrderController {
 
   @ApiOperation({ summary: 'Get all orders (customers see their own; staff/admin see all)' })
   @ApiQuery({ name: 'status', enum: OrderStatus, required: false })
+  @ApiQuery({ name: 'orderType', enum: OrderType, required: false })
   @ApiQuery({ name: 'date', type: String, required: false, example: '2026-03-12' })
   @Get()
   findAll(
     @CurrentUser() user: any,
     @Query('status') status?: OrderStatus,
+    @Query('orderType') orderType?: OrderType,
     @Query('date') date?: string,
   ) {
-    return this.orderService.findAll(user.id, user.role, { status, date });
+    return this.orderService.findAll(user.id, user.role, { status, orderType, date });
   }
 
   @ApiOperation({ summary: 'Get order by ID' })

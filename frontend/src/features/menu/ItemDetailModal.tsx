@@ -3,6 +3,7 @@ import { useDispatch } from 'react-redux';
 import toast from 'react-hot-toast';
 import type { MenuItem } from '../../types';
 import { addItem, toggleCart } from '../cart/cardSlice';
+import { isItemOrderable } from './helpers/availability';
 import type { AppDispatch } from '../../app/store';
 
 interface Props {
@@ -19,6 +20,8 @@ export default function ItemDetailModal({ item, onClose }: Props) {
   if (!item) return null;
 
   const options = item.customisationOptions || {};
+  const { available, reason } = isItemOrderable(item);
+  const maxQty = item.stockQty >= 0 ? item.stockQty : Infinity;
 
   const handleOptionSelect = (group: string, value: string) => {
     setSelectedOptions(prev => {
@@ -130,6 +133,13 @@ export default function ItemDetailModal({ item, onClose }: Props) {
             </div>
           )}
 
+          {/* Availability Warning */}
+          {!available && (
+            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-xs text-red-600 font-medium">{reason}</p>
+            </div>
+          )}
+
           {/* Quantity Selector */}
           <div className="flex items-center justify-between mt-6">
             <span className="text-sm font-medium text-gray-700">Quantity</span>
@@ -144,7 +154,7 @@ export default function ItemDetailModal({ item, onClose }: Props) {
               </button>
               <span className="w-6 text-center font-semibold">{quantity}</span>
               <button
-                onClick={() => setQuantity(q => q + 1)}
+                onClick={() => setQuantity(q => Math.min(maxQty, q + 1))}
                 className="w-8 h-8 rounded-full border border-gray-300
                            flex items-center justify-center text-gray-600
                            hover:border-orange-400 transition"
@@ -153,6 +163,12 @@ export default function ItemDetailModal({ item, onClose }: Props) {
               </button>
             </div>
           </div>
+          
+          {maxQty !== Infinity && (
+            <p className="text-xs text-gray-500 mt-2">
+              Only {maxQty} available
+            </p>
+          )}
 
           {/* Actions */}
           <div className="flex gap-3 mt-6">
@@ -165,12 +181,12 @@ export default function ItemDetailModal({ item, onClose }: Props) {
             </button>
             <button
               onClick={handleAddToCart}
-              disabled={!item.isAvailable}
+              disabled={!available}
               className="flex-1 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600
                          text-white text-sm font-semibold transition
                          disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              Add to Cart — ${total}
+              {available ? `Add to Cart — $${total}` : 'Unavailable'}
             </button>
           </div>
         </div>

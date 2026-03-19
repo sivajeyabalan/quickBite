@@ -1,10 +1,12 @@
 export type Role = 'CUSTOMER' | 'STAFF' | 'ADMIN';
 
+export type OrderType = 'FINE_DINE' | 'PICKUP' | 'DELIVERY';
+
 export type OrderStatus =
   | 'PENDING' | 'CONFIRMED' | 'PREPARING'
   | 'READY'   | 'SERVED'    | 'COMPLETED' | 'CANCELLED';
 
-export type PaymentMethod = 'CASH' | 'CARD' | 'QR';
+export type PaymentMethod = 'CASH' | 'CARD';
 
 export interface User {
   id:        string;
@@ -13,6 +15,22 @@ export interface User {
   phone?:    string;
   role:      Role;
   createdAt: string;
+}
+
+export interface Address {
+  id: string;
+  label?: string;
+  recipientName?: string;
+  phone?: string;
+  line1: string;
+  line2?: string;
+  city: string;
+  state?: string;
+  postalCode: string;
+  landmark?: string;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Category {
@@ -30,6 +48,10 @@ export interface MenuItem {
   price:                string;
   imageUrl?:            string;
   isAvailable:          boolean;
+  stockQty:             number;  // -1 = unlimited
+  is86d:                boolean; // out
+  availableFrom?:       string | null;
+  availableTo?:         string | null;
   prepTimeMins:         number;
   customisationOptions: Record<string, string[]>;
   category:             { id: string; name: string };
@@ -51,7 +73,21 @@ export interface Order {
   id:          string;
   orderNumber: string;
   status:      OrderStatus;
+  orderType:   OrderType;
   tableNumber?: string;
+  deliveryAddressId?: string;
+  deliveryAddressSnapshot?: {
+    id: string;
+    label?: string;
+    recipientName?: string;
+    phone?: string;
+    line1: string;
+    line2?: string;
+    city: string;
+    state?: string;
+    postalCode: string;
+    landmark?: string;
+  };
   subtotal:    string;
   tax:         string;
   total:       string;
@@ -69,6 +105,33 @@ export interface Payment {
   status:         string;
   transactionRef?: string;
   paidAt?:        string;
+}
+
+export interface TableAssignment {
+  id: string;
+  userId: string;
+  tableNumber: string;
+  status: 'ACTIVE' | 'RELEASED';
+  assignedAt: string;
+  assignedBy?: {
+    id: string;
+    name: string;
+  };
+}
+
+export interface TableRequest {
+  id: string;
+  userId: string;
+  status: 'PENDING' | 'COMPLETED' | 'CANCELLED';
+  partySize?: number;
+  notes?: string;
+  requestedAt: string;
+  user?: {
+    id: string;
+    name: string;
+    phone?: string;
+    email: string;
+  };
 }
 
 // Cart types — frontend only

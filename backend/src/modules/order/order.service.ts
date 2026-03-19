@@ -1,35 +1,161 @@
 import {
   Injectable, NotFoundException,
   BadRequestException, ForbiddenException,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order.dto';
-import { OrderStatus, Role } from '@prisma/client';
+import { OrderStatus, OrderType, Role, TableAssignmentStatus } from '@prisma/client';
 import { generateOrderNumber } from './helpers/order-helper';
+import { isItemOrderable } from '../menu/helpers/availability.helper';
 
 import { kitchenGateway } from '../gateway/gateway.gateway';
 
 const TAX_RATE = Number(process.env.TAX_RATE) || 0.10; // 10% tax — move to config in production
+const ORDER_ACCEPT_SLA_MINUTES = Number(process.env.ORDER_ACCEPT_SLA_MINUTES) || 5;
+const ORDER_SLA_SWEEP_MS = Number(process.env.ORDER_SLA_SWEEP_MS) || 30_000;
+const ACTIVE_TABLE_BLOCKING_STATUSES: OrderStatus[] = [
+  OrderStatus.PENDING,
+  OrderStatus.CONFIRMED,
+  OrderStatus.PREPARING,
+  OrderStatus.READY,
+  OrderStatus.SERVED,
+];
 
 // Define valid status transitions — staff cannot skip steps
 const STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   PENDING:    [OrderStatus.CONFIRMED, OrderStatus.CANCELLED],
-  CONFIRMED:  [OrderStatus.PREPARING, OrderStatus.CANCELLED],
-  PREPARING:  [OrderStatus.READY],
-  READY:      [OrderStatus.SERVED],
-  SERVED:     [OrderStatus.COMPLETED],
-  COMPLETED:  [],
+  CONFIRMED:  [OrderStatus.PENDING, OrderStatus.PREPARING, OrderStatus.CANCELLED],
+  PREPARING:  [OrderStatus.CONFIRMED, OrderStatus.READY],
+  READY:      [OrderStatus.PREPARING, OrderStatus.SERVED],
+  SERVED:     [OrderStatus.READY, OrderStatus.COMPLETED],
+  COMPLETED:  [OrderStatus.SERVED],
   CANCELLED:  [],
 };
 
 @Injectable()
-export class OrdersService {
+export class OrdersService implements OnModuleInit, OnModuleDestroy {
+  private readonly logger = new Logger(OrdersService.name);
+  private sweepTimer?: NodeJS.Timeout;
+
   constructor(private readonly prisma: PrismaService ,
     private readonly gateway : kitchenGateway
   ) {}
 
+  onModuleInit() {
+    if (process.env.NODE_ENV === 'test') return;
+
+    this.sweepTimer = setInterval(() => {
+      void this.autoCancelExpiredPendingOrders();
+    }, ORDER_SLA_SWEEP_MS);
+  }
+
+  onModuleDestroy() {
+    if (this.sweepTimer) {
+      clearInterval(this.sweepTimer);
+    }
+  }
+
+  private getAcceptByTimestamp() {
+    return new Date(Date.now() + ORDER_ACCEPT_SLA_MINUTES * 60 * 1000);
+  }
+
+  private async assertTableAvailable(tableNumber: string) {
+    const existing = await this.prisma.order.findFirst({
+      where: {
+        orderType: OrderType.FINE_DINE,
+        tableNumber,
+        status: { in: ACTIVE_TABLE_BLOCKING_STATUSES },
+      },
+      select: { id: true, orderNumber: true },
+    });
+
+    if (existing) {
+      throw new BadRequestException(
+        `Table ${tableNumber} is currently occupied by order ${existing.orderNumber}`,
+      );
+    }
+  }
+
   async create(dto: CreateOrderDto, userId: string) {
+    const orderType = dto.orderType ?? OrderType.FINE_DINE;
+
+    let tableNumber: string | undefined;
+    let deliveryAddressId: string | undefined;
+    let deliveryAddressSnapshot:
+      | {
+          id: string;
+          label?: string | null;
+          recipientName?: string | null;
+          phone?: string | null;
+          line1: string;
+          line2?: string | null;
+          city: string;
+          state?: string | null;
+          postalCode: string;
+          landmark?: string | null;
+        }
+      | undefined;
+
+    if (orderType === OrderType.FINE_DINE) {
+      const activeAssignment = await this.prisma.tableAssignment.findFirst({
+        where: {
+          userId,
+          status: TableAssignmentStatus.ACTIVE,
+        },
+        orderBy: { assignedAt: 'desc' },
+        select: {
+          tableNumber: true,
+        },
+      });
+
+      if (!activeAssignment?.tableNumber) {
+        throw new BadRequestException('No table assigned. Please contact host/staff.');
+      }
+      tableNumber = activeAssignment.tableNumber;
+      await this.assertTableAvailable(activeAssignment.tableNumber);
+    }
+
+    if (orderType === OrderType.PICKUP) {
+      if (dto.deliveryAddressId) {
+        throw new BadRequestException('Delivery address is not allowed for pickup orders');
+      }
+    }
+
+    if (orderType === OrderType.DELIVERY) {
+      if (!dto.deliveryAddressId) {
+        throw new BadRequestException('Delivery address is required for delivery orders');
+      }
+
+      const address = await this.prisma.address.findFirst({
+        where: {
+          id: dto.deliveryAddressId,
+          userId,
+        },
+      });
+
+      if (!address) {
+        throw new BadRequestException('Selected delivery address was not found');
+      }
+
+      deliveryAddressId = address.id;
+      deliveryAddressSnapshot = {
+        id: address.id,
+        label: address.label,
+        recipientName: address.recipientName,
+        phone: address.phone,
+        line1: address.line1,
+        line2: address.line2,
+        city: address.city,
+        state: address.state,
+        postalCode: address.postalCode,
+        landmark: address.landmark,
+      };
+    }
+
     // Step 1 — Fetch all menu items in one query (not N queries in a loop)
     const menuItemIds = dto.items.map(i => i.menuItemId);
     const menuItems = await this.prisma.menuItem.findMany({
@@ -46,9 +172,15 @@ export class OrdersService {
         );
       }
 
-      if (!found.isAvailable) {
+      const { available, reason } = isItemOrderable(found);
+      if (!available) {
+        throw new BadRequestException(`"${found.name}": ${reason}`);
+      }
+
+      // Check requested quantity does not exceed available stock
+      if (found.stockQty >= 0 && ordered.quantity > found.stockQty) {
         throw new BadRequestException(
-          `"${found.name}" is currently unavailable`
+          `"${found.name}" has only ${found.stockQty} units available, requested ${ordered.quantity}`
         );
       }
     }
@@ -82,7 +214,11 @@ export class OrdersService {
         data: {
           orderNumber,
           userId,
-          tableNumber: dto.tableNumber,
+          orderType,
+          tableNumber,
+          deliveryAddressId,
+          deliveryAddressSnapshot,
+          acceptBy: this.getAcceptByTimestamp(),
           notes:       dto.notes,
           subtotal,
           tax,
@@ -95,6 +231,7 @@ export class OrdersService {
           orderItems: {
             include: { menuItem: { select: { id: true, name: true, imageUrl: true } } },
           },
+          deliveryAddress: true,
           user: { select: { id: true, name: true, email: true } },
         },
       });
@@ -109,9 +246,10 @@ export class OrdersService {
 
   async findAll(userId: string, userRole: Role, query: {
     status?: OrderStatus;
+    orderType?: OrderType;
     date?: string;
   }) {
-    const { status, date } = query;
+    const { status, orderType, date } = query;
 
     // Customers see only their own orders
     // Staff and Admin see everything
@@ -128,12 +266,14 @@ export class OrdersService {
       where: {
         ...userFilter,
         ...(status && { status }),
+        ...(orderType && { orderType }),
         ...dateFilter,
       },
       include: {
         orderItems: {
           include: { menuItem: { select: { id: true, name: true, imageUrl: true } } },
         },
+        deliveryAddress: true,
         payment: true,
         user: { select: { id: true, name: true, email: true } },
       },
@@ -148,6 +288,7 @@ export class OrdersService {
         orderItems: {
           include: { menuItem: { select: { id: true, name: true, imageUrl: true } } },
         },
+        deliveryAddress: true,
         payment: true,
         user: { select: { id: true, name: true, email: true } },
       },
@@ -191,10 +332,49 @@ export class OrdersService {
       throw new ForbiddenException('Only admins can cancel confirmed orders');
     }
 
+    // SLA guard: cannot confirm after acceptance window has expired
+    if (
+      order.status === OrderStatus.PENDING &&
+      dto.status === OrderStatus.CONFIRMED &&
+      order.acceptBy &&
+      new Date() > order.acceptBy
+    ) {
+      const cancelled = await this.prisma.order.update({
+        where: { id },
+        data: {
+          status: OrderStatus.CANCELLED,
+          cancelReason: 'AUTO_TIMEOUT',
+        },
+        include: { orderItems: true },
+      });
+
+      this.gateway.emitStatusUpdate(cancelled);
+
+      throw new BadRequestException('Order acceptance window expired; order auto-cancelled');
+    }
+
     
+    const statusUpdateData: {
+      status: OrderStatus;
+      acceptedAt?: Date | null;
+      acceptBy?: Date | null;
+    } = {
+      status: dto.status,
+    };
+
+    if (dto.status === OrderStatus.CONFIRMED) {
+      statusUpdateData.acceptedAt = new Date();
+    }
+
+    // Moving back to pending re-opens SLA window
+    if (dto.status === OrderStatus.PENDING) {
+      statusUpdateData.acceptedAt = null;
+      statusUpdateData.acceptBy = this.getAcceptByTimestamp();
+    }
+
     const updated = await this.prisma.order.update({
       where: { id },
-      data: { status: dto.status },
+      data: statusUpdateData,
       include: { orderItems: true },
     });
 
@@ -243,5 +423,33 @@ export class OrdersService {
     this.gateway.emitStatusUpdate(updated);
 
     return updated;
+  }
+
+  async autoCancelExpiredPendingOrders() {
+    const expiredPendingOrders = await this.prisma.order.findMany({
+      where: {
+        status: OrderStatus.PENDING,
+        acceptBy: { lte: new Date() },
+      },
+      include: { orderItems: true },
+    });
+
+    if (expiredPendingOrders.length === 0) return 0;
+
+    for (const order of expiredPendingOrders) {
+      const cancelled = await this.prisma.order.update({
+        where: { id: order.id },
+        data: {
+          status: OrderStatus.CANCELLED,
+          cancelReason: 'AUTO_TIMEOUT',
+        },
+        include: { orderItems: true },
+      });
+
+      this.gateway.emitStatusUpdate(cancelled);
+      this.logger.log(`Auto-cancelled expired pending order ${order.orderNumber}`);
+    }
+
+    return expiredPendingOrders.length;
   }
 }

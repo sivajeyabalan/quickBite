@@ -1,11 +1,17 @@
+import { memo } from 'react';
 import { type MenuItem} from '../../types';
+import { isItemOrderable, getStockStatus, optimizeMenuImage } from './helpers/availability';
 
 interface Props {
   item:    MenuItem;
   onClick: (item: MenuItem) => void;
 }
 
-export default function ItemCard({ item, onClick }: Props) {
+const ItemCard = memo(function ItemCard({ item, onClick }: Props) {
+  const { available, reason } = isItemOrderable(item);
+  const stockStatus = getStockStatus(item);
+  const optimizedImage = optimizeMenuImage(item.imageUrl);
+
   return (
     <div
       onClick={() => onClick(item)}
@@ -14,16 +20,29 @@ export default function ItemCard({ item, onClick }: Props) {
                  border border-gray-100"
     >
       {/* Image */}
-      <div className="h-40 bg-gray-100 overflow-hidden">
-        {item.imageUrl ? (
+      <div className="h-40 bg-gray-100 overflow-hidden relative">
+        {optimizedImage ? (
           <img
-            src={item.imageUrl}
+            src={optimizedImage}
             alt={item.name}
+            loading="lazy"
+            decoding="async"
+            fetchPriority="low"
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
             className="w-full h-full object-cover"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-4xl">
             🍽
+          </div>
+        )}
+        
+        {/* Stock/86 Badge */}
+        {!available && (
+          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+            <span className="text-xs bg-red-500 text-white px-2 py-1 rounded">
+              {reason}
+            </span>
           </div>
         )}
       </div>
@@ -34,12 +53,6 @@ export default function ItemCard({ item, onClick }: Props) {
           <h3 className="font-semibold text-gray-800 text-sm leading-tight">
             {item.name}
           </h3>
-          {!item.isAvailable && (
-            <span className="text-xs bg-red-100 text-red-500
-                             px-2 py-0.5 rounded-full whitespace-nowrap">
-              Sold Out
-            </span>
-          )}
         </div>
 
         {item.description && (
@@ -57,15 +70,23 @@ export default function ItemCard({ item, onClick }: Props) {
           </span>
         </div>
 
+        {stockStatus && (
+          <p className="text-xs text-amber-600 mt-1 font-medium">
+            {stockStatus}
+          </p>
+        )}
+
         <button
-          disabled={!item.isAvailable}
+          disabled={!available}
           className="mt-3 w-full text-xs font-medium py-1.5 rounded-lg transition
                      bg-orange-500 hover:bg-orange-600 text-white
                      disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          {item.isAvailable ? 'Add to Cart' : 'Unavailable'}
+          {available ? 'Add to Cart' : reason || 'Unavailable'}
         </button>
       </div>
     </div>
   );
-}
+});
+
+export default ItemCard;

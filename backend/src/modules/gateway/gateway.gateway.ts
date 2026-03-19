@@ -63,6 +63,16 @@ export class kitchenGateway implements OnGatewayInit , OnGatewayConnection , OnG
     this.server.emit('payment:processing', data)
   }
 
+  emitCashPaymentSelected(data: {
+    orderId: string;
+    orderNumber: string;
+    orderType: string;
+    message: string;
+  }) {
+    this.logger.log(`Emitting payment:cashSelected -> ${data.orderNumber}`)
+    this.server.emit('payment:cashSelected', data)
+  }
+
   @SubscribeMessage('join:kitchen')
   handleJoinKitchen(@ConnectedSocket() client : Socket){
     client.join('kitchen-room')

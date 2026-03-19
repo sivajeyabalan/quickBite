@@ -6,14 +6,16 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
-import { OrderStatus, PaymentStatus } from '@prisma/client';
+import { OrderStatus, OrderType, PaymentMethod, PaymentStatus } from '@prisma/client';
 import { StripeService } from './stripe.service';
 import { kitchenGateway } from '../gateway/gateway.gateway';
 
 @Injectable()
 export class PaymentsService {
   private static readonly STRIPE_MIN_USD = 0.5;
-  private static readonly STRIPE_MIN_INR = 50;
+  private static readonly DELIVERY_ALLOWED_METHODS: PaymentMethod[] = [
+    PaymentMethod.CARD,
+  ];
 
   constructor(
     private readonly prisma: PrismaService,
@@ -21,17 +23,20 @@ export class PaymentsService {
     private readonly gateway: kitchenGateway,
   ) {}
 
-  private validateStripeMinimum(amount: number, currency: 'usd' | 'inr') {
-    if (currency === 'usd' && amount < PaymentsService.STRIPE_MIN_USD) {
+  private validateStripeMinimum(amount: number) {
+    if (amount < PaymentsService.STRIPE_MIN_USD) {
       throw new BadRequestException(
         `Minimum card payment amount is $${PaymentsService.STRIPE_MIN_USD.toFixed(2)}.`,
       );
     }
+  }
 
-    if (currency === 'inr' && amount < PaymentsService.STRIPE_MIN_INR) {
-      throw new BadRequestException(
-        `Minimum UPI payment amount is ₹${PaymentsService.STRIPE_MIN_INR}. Add more items or choose Cash/Card.`,
-      );
+  private validateDeliveryMethod(orderType: OrderType, method: PaymentMethod) {
+    if (
+      orderType === OrderType.DELIVERY
+      && !PaymentsService.DELIVERY_ALLOWED_METHODS.includes(method)
+    ) {
+      throw new BadRequestException('For delivery orders, only Card is allowed');
     }
   }
 
@@ -54,6 +59,29 @@ export class PaymentsService {
     // Step 3 — Prevent duplicate payment
     if (order.payment) {
       throw new ConflictException('Payment already exists for this order');
+    }
+
+    this.validateDeliveryMethod(order.orderType, dto.method);
+
+    if (dto.method === PaymentMethod.CASH) {
+      const payment = await this.prisma.payment.create({
+        data: {
+          orderId: dto.orderId,
+          amount: order.total,
+          method: PaymentMethod.CASH,
+          status: PaymentStatus.PENDING,
+          transactionRef: dto.transactionRef,
+        },
+      });
+
+      this.gateway.emitCashPaymentSelected({
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        orderType: order.orderType,
+        message: 'Customer selected CASH. Collect payment at counter/table.',
+      });
+
+      return payment;
     }
 
     // Step 4 — Amount comes from order, never from client
@@ -122,10 +150,7 @@ export class PaymentsService {
     });
   }
 
-  async createStripePaymentIntent(
-    orderId: string,
-    method?: 'CARD' | 'QR',
-  ) {
+  async createStripePaymentIntent(orderId: string) {
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
       include: { payment: true },
@@ -134,6 +159,9 @@ export class PaymentsService {
     if (!order) {
       throw new NotFoundException(`Order ${orderId} not found`);
     }
+
+    this.validateDeliveryMethod(order.orderType, PaymentMethod.CARD);
+
     if (order.payment) {
       if (order.payment.status === PaymentStatus.PAID) {
         throw new ConflictException('Payment already completed for this order');
@@ -166,22 +194,21 @@ export class PaymentsService {
         }
 
         if (existingIntent.status === 'canceled') {
-          const resumeMethod = method ?? (order.payment.method === 'QR' ? 'QR' : 'CARD');
-          const currency = resumeMethod === 'QR' ? 'inr' : 'usd';
           const orderAmount = Number(order.total);
 
-          this.validateStripeMinimum(orderAmount, currency);
+          this.validateStripeMinimum(orderAmount);
 
           const newIntent = await this.stripe.createPaymentIntent(
             orderAmount,
-            currency,
+            'usd',
             { orderId: order.id, orderNumber: order.orderNumber },
+            ['card'],
           );
 
           await this.prisma.payment.update({
             where: { id: order.payment.id },
             data: {
-              method: resumeMethod,
+              method: PaymentMethod.CARD,
               stripePaymentIntentId: newIntent.id,
               status: PaymentStatus.PENDING,
             },
@@ -213,24 +240,22 @@ export class PaymentsService {
       throw new BadRequestException('Cannot pay for a cancelled order');
     }
 
-    // Use automatic_payment_methods (required by Payment Element).
-    // For QR/UPI use INR — Stripe will surface UPI automatically for INR.
-    const currency = method === 'QR' ? 'inr' : 'usd';
     const orderAmount = Number(order.total);
 
-    this.validateStripeMinimum(orderAmount, currency);
+    this.validateStripeMinimum(orderAmount);
 
     const intent = await this.stripe.createPaymentIntent(
       orderAmount,
-      currency,
+      'usd',
       { orderId: order.id, orderNumber: order.orderNumber },
+      ['card'],
     );
 
     await this.prisma.payment.create({
       data: {
         orderId:               order.id,
         amount:                order.total,
-        method:                method === 'QR' ? 'QR' : 'CARD',
+        method:                PaymentMethod.CARD,
         status:                'PENDING',
         stripePaymentIntentId: intent.id,
       },
@@ -323,7 +348,7 @@ export class PaymentsService {
           this.gateway.emitPaymentProcessing({
             orderId,
             orderNumber: order.orderNumber,
-            message: 'UPI payment is being processed by your bank',
+            message: 'Card payment is being processed',
           });
         }
       }

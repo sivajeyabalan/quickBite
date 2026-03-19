@@ -16,6 +16,12 @@ const STATUS_STEPS: OrderStatus[] = [
   'PENDING', 'CONFIRMED', 'PREPARING', 'READY', 'SERVED', 'COMPLETED',
 ];
 
+const ORDER_TYPE_LABEL = {
+  FINE_DINE: 'Fine Dine',
+  PICKUP: 'Pickup',
+  DELIVERY: 'Delivery',
+} as const;
+
 const STATUS_LABELS: Record<OrderStatus, string> = {
   PENDING:   '⏳ Pending',
   CONFIRMED: '✅ Confirmed',
@@ -84,7 +90,7 @@ export default function OrderTrackingPage() {
     }) => {
       if (data.orderId === id) {
         toast.loading(data.message, {
-          id:       'upi-processing',
+          id:       'payment-processing',
           duration: 30000,
         });
       }
@@ -96,7 +102,7 @@ export default function OrderTrackingPage() {
       amount: number;
     }) => {
       if (data.orderId === id) {
-        toast.dismiss('upi-processing');
+        toast.dismiss('payment-processing');
         queryClient.invalidateQueries({ queryKey: ['order', id] });
         toast.success(
           `Payment of $${data.amount.toFixed(2)} confirmed!`,
@@ -160,7 +166,8 @@ export default function OrderTrackingPage() {
               {order.orderNumber}
             </h1>
             <p className="text-sm text-gray-500 mt-1">
-              Table {order.tableNumber || 'N/A'} ·{' '}
+              {ORDER_TYPE_LABEL[order.orderType]} 
+              {order.orderType === 'FINE_DINE' ? ` · Table ${order.tableNumber || 'N/A'}` : ''} ·{' '}
               {new Date(order.createdAt).toLocaleTimeString()}
             </p>
           </div>

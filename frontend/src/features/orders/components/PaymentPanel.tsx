@@ -22,7 +22,7 @@ export default function PaymentPanel({ order }: { order: Order }) {
     mutationFn: (method: PaymentMethod) =>
       api.post('/payments', { orderId: order.id, method }),
     onSuccess: () => {
-      toast.success('Payment recorded!');
+      toast.success('Cash selected. Kitchen/staff notified.');
       queryClient.invalidateQueries({ queryKey: ['order', order.id] });
     },
     onError: (err: any) => {
@@ -31,10 +31,9 @@ export default function PaymentPanel({ order }: { order: Order }) {
   });
 
   const intentMutation = useMutation({
-    mutationFn: (method: 'CARD' | 'QR') =>
+    mutationFn: () =>
       api.post('/payments/stripe/intent', {
         orderId: order.id,
-        method,
       }),
     onSuccess: (res) => {
       setClientSecret(
@@ -101,6 +100,25 @@ export default function PaymentPanel({ order }: { order: Order }) {
     );
   }
 
+  if (order.payment?.method === 'CASH' && order.payment.status === 'PENDING') {
+    return (
+      <div className="bg-white rounded-2xl shadow-sm border
+                      border-gray-100 p-6">
+        <h2 className="font-semibold text-gray-700 mb-4">Payment</h2>
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-2">
+          <p className="text-amber-700 font-semibold">Cash Payment Selected</p>
+          <p className="text-sm text-gray-600">
+            Staff has been notified. Please pay in cash at counter/table.
+          </p>
+          <div className="text-sm text-gray-600 flex justify-between">
+            <span>Amount</span>
+            <span className="font-bold">${Number(order.total).toFixed(2)}</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (order.status === 'CANCELLED') {
     return (
       <div className="bg-white rounded-2xl shadow-sm border
@@ -133,11 +151,10 @@ export default function PaymentPanel({ order }: { order: Order }) {
         </Elements>
       ) : (
         <>
-          <div className="grid grid-cols-3 gap-2 mb-5">
+          <div className="grid grid-cols-2 gap-2 mb-5">
             {[
-              { value: 'CASH', label: 'Cash', icon: '💵' },
-              { value: 'CARD', label: 'Card / Google Pay', icon: '💳' },
-              { value: 'QR', label: 'UPI / GPay', icon: '📱' },
+              { value: 'CASH', label: 'Cash', icon: '' },
+              { value: 'CARD', label: 'Card', icon: '' },
             ].map(m => (
               <button
                 key={m.value}
@@ -163,8 +180,8 @@ export default function PaymentPanel({ order }: { order: Order }) {
               cashMutation.isPending || intentMutation.isPending
             }
             onClick={() => {
-              if (selectedMethod === 'CARD' || selectedMethod === 'QR') {
-                intentMutation.mutate(selectedMethod);
+              if (selectedMethod === 'CARD') {
+                intentMutation.mutate();
               } else {
                 cashMutation.mutate(selectedMethod);
               }
@@ -175,9 +192,7 @@ export default function PaymentPanel({ order }: { order: Order }) {
           >
             {cashMutation.isPending || intentMutation.isPending
               ? <Spinner size="sm" />
-              : `Pay $${Number(order.total).toFixed(2)} via ${
-                selectedMethod === 'QR' ? 'UPI / Google Pay' : selectedMethod
-              }`
+              : `Pay $${Number(order.total).toFixed(2)} via ${selectedMethod}`
             }
           </button>
         </>

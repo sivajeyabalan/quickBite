@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
@@ -7,6 +8,13 @@ import { addItem, toggleCart } from '../cart/cardSlice'
 import type { AppDispatch, RootState } from '../../app/store';
 import Spinner from '../../components/ui/Spinner';
 import toast from 'react-hot-toast';
+import { useSocket } from '../../hooks/useSocket';
+
+const ORDER_TYPE_LABEL = {
+  FINE_DINE: 'Fine Dine',
+  PICKUP: 'Pickup',
+  DELIVERY: 'Delivery',
+} as const;
 
 const STATUS_COLORS: Record<OrderStatus, string> = {
   PENDING:   'bg-yellow-100 text-yellow-700',
@@ -27,6 +35,7 @@ export default function OrdersPage() {
   const navigate  = useNavigate();
   const dispatch  = useDispatch<AppDispatch>();
   const queryClient = useQueryClient();
+  const socket = useSocket();
   const user      = useSelector((s: RootState) => s.auth.user);
 
   const isAdminOrStaff = user?.role === 'ADMIN' || user?.role === 'STAFF';
@@ -35,6 +44,7 @@ export default function OrdersPage() {
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ['orders'],
     queryFn:  fetchOrders,
+    refetchOnMount: 'always',
   });
 
   const cancelMutation = useMutation({
@@ -75,6 +85,29 @@ export default function OrdersPage() {
     cancelMutation.mutate(order.id);
   };
 
+  useEffect(() => {
+    if (!socket) return;
+
+    socket.on('order:new', (order: Order) => {
+      queryClient.setQueryData(['orders'], (prev: Order[] = []) => {
+        const exists = prev.some(o => o.id === order.id);
+        if (exists) return prev;
+        return [order, ...prev];
+      });
+    });
+
+    socket.on('order:statusUpdated', (updated: Order) => {
+      queryClient.setQueryData(['orders'], (prev: Order[] = []) =>
+        prev.map(order => (order.id === updated.id ? { ...order, ...updated } : order)),
+      );
+    });
+
+    return () => {
+      socket.off('order:new');
+      socket.off('order:statusUpdated');
+    };
+  }, [socket, queryClient]);
+
   if (isLoading) return (
     <div className="flex justify-center items-center min-h-[60vh]">
       <Spinner size="lg" />
@@ -103,7 +136,8 @@ export default function OrdersPage() {
                   <h2 className="font-bold text-gray-800">{order.orderNumber}</h2>
                   <p className="text-xs text-gray-400 mt-0.5">
                     {new Date(order.createdAt).toLocaleString()} ·
-                    Table {order.tableNumber || 'N/A'}
+                    {ORDER_TYPE_LABEL[order.orderType]}
+                    {order.orderType === 'FINE_DINE' ? ` · Table ${order.tableNumber || 'N/A'}` : ''}
                   </p>
                   {isAdminOrStaff && (
                     <p className="text-xs text-gray-500 mt-1">

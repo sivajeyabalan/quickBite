@@ -1,0 +1,255 @@
+.table-assignment-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.table-assignment-card {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 30px;
+}
+
+.table-assignment-card h1 {
+  color: #333;
+  margin-bottom: 30px;
+  font-size: 28px;
+  text-align: center;
+}
+
+.table-assignment-card h2 {
+  color: #555;
+  margin-top: 30px;
+  margin-bottom: 20px;
+  font-size: 20px;
+  border-bottom: 2px solid #f5a623;
+  padding-bottom: 10px;
+}
+
+/* Messages */
+.success-message {
+  background: #d4edda;
+  color: #155724;
+  padding: 12px 16px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+  border-left: 4px solid #28a745;
+}
+
+.error-message {
+  background: #f8d7da;
+  color: #721c24;
+  padding: 12px 16px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+  border-left: 4px solid #dc3545;
+}
+
+/* Form */
+.assignment-form {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 30px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.form-group {
+  flex: 1;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group label {
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+
+.form-group select,
+.form-group input {
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: inherit;
+  transition: border-color 0.2s;
+}
+
+.form-group select:hover,
+.form-group input:hover {
+  border-color: #f5a623;
+}
+
+.form-group select:focus,
+.form-group input:focus {
+  outline: none;
+  border-color: #f5a623;
+  box-shadow: 0 0 0 3px rgba(245, 166, 35, 0.1);
+}
+
+.form-group select:disabled,
+.form-group input:disabled {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Buttons */
+.btn-assign {
+  padding: 10px 24px;
+  background: #f5a623;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s;
+  white-space: nowrap;
+}
+
+.btn-assign:hover:not(:disabled) {
+  background: #d48b1a;
+  box-shadow: 0 2px 6px rgba(245, 166, 35, 0.3);
+}
+
+.btn-assign:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.btn-release {
+  padding: 8px 16px;
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.3s;
+}
+
+.btn-release:hover:not(:disabled) {
+  background: #c82333;
+  box-shadow: 0 2px 6px rgba(220, 53, 69, 0.3);
+}
+
+.btn-release:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Assignments List */
+.assignments-section {
+  margin-top: 30px;
+}
+
+.loading,
+.no-data {
+  color: #999;
+  text-align: center;
+  padding: 20px;
+  font-style: italic;
+}
+
+.assignments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.assignment-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background: #f9f9f9;
+  border-radius: 6px;
+  border-left: 4px solid #f5a623;
+  transition: all 0.2s;
+}
+
+.assignment-item:hover {
+  background: #f5f5f5;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.assignment-info {
+  flex: 1;
+}
+
+.customer-name {
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 6px;
+  font-size: 15px;
+}
+
+.table-number {
+  color: #f5a623;
+  font-weight: 600;
+  font-size: 16px;
+  margin-bottom: 4px;
+}
+
+.assigned-at {
+  color: #999;
+  font-size: 12px;
+
+.customer-contact {
+  color: #666;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.party-size {
+  color: #f5a623;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.request-notes {
+  color: #666;
+  font-size: 12px;
+  font-style: italic;
+  margin-bottom: 4px;
+}
+
+.waiting-item {
+  border-left-color: #3b82f6;
+  background: #eff6ff;
+}
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .table-assignment-card {
+    padding: 20px;
+  }
+
+  .assignment-form {
+    flex-direction: column;
+  }
+
+  .form-group {
+    width: 100%;
+  }
+
+  .assignment-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .btn-release {
+    align-self: flex-end;
+  }
+}
