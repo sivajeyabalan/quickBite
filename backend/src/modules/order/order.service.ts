@@ -8,6 +8,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order.dto';
+import { BulkUpdateOrderStatusDto } from './dto/bulk-update-order-status.dto';
 import { OrderStatus, OrderType, Role } from '@prisma/client';
 import { generateOrderNumber } from './helpers/order-helper';
 import { isItemOrderable } from '../menu/helpers/availability.helper';
@@ -57,6 +58,28 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
 
   private getAcceptByTimestamp() {
     return new Date(Date.now() + ORDER_ACCEPT_SLA_MINUTES * 60 * 1000);
+  }
+
+  private validateTransitionOrThrow(
+    order: { status: OrderStatus },
+    nextStatus: OrderStatus,
+    userRole: Role,
+  ) {
+    const allowedNext = STATUS_TRANSITIONS[order.status];
+    if (!allowedNext.includes(nextStatus)) {
+      throw new BadRequestException(
+        `Cannot transition order from ${order.status} to ${nextStatus}`,
+      );
+    }
+
+    if (
+      nextStatus === OrderStatus.CANCELLED
+      && order.status === OrderStatus.CONFIRMED
+      && userRole !== Role.ADMIN
+    ) {
+      throw new ForbiddenException('Only admins can cancel confirmed orders');
+    }
+
   }
 
   async create(dto: CreateOrderDto, userId: string) {
@@ -284,20 +307,7 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
       throw new NotFoundException(`Order ${id} not found`);
     }
 
-    // Validate the transition is allowed
-    const allowedNext = STATUS_TRANSITIONS[order.status];
-    if (!allowedNext.includes(dto.status)) {
-      throw new BadRequestException(
-        `Cannot transition order from ${order.status} to ${dto.status}`
-      );
-    }
-
-    // Only admin can cancel a confirmed order
-    if (dto.status === OrderStatus.CANCELLED &&
-        order.status === OrderStatus.CONFIRMED &&
-        userRole !== Role.ADMIN) {
-      throw new ForbiddenException('Only admins can cancel confirmed orders');
-    }
+    this.validateTransitionOrThrow(order, dto.status, userRole);
 
     // SLA guard: cannot confirm after acceptance window has expired
     if (
@@ -363,6 +373,87 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
 
 
     return updated ;
+  }
+
+  async bulkUpdateStatus(dto: BulkUpdateOrderStatusDto, userRole: Role) {
+    const uniqueOrderIds = Array.from(new Set(dto.orderIds));
+
+    const orders = await this.prisma.order.findMany({
+      where: { id: { in: uniqueOrderIds } },
+      include: { payment: true },
+    });
+
+    if (orders.length !== uniqueOrderIds.length) {
+      throw new NotFoundException('One or more orders were not found');
+    }
+
+    for (const order of orders) {
+      if (order.userId !== dto.userId) {
+        throw new BadRequestException('All orders must belong to the same user');
+      }
+      if (order.orderType !== dto.orderType) {
+        throw new BadRequestException('All orders must match the requested order type');
+      }
+      if (order.status !== dto.fromStatus) {
+        throw new BadRequestException('All orders must match the requested source status');
+      }
+      this.validateTransitionOrThrow(order, dto.toStatus, userRole);
+      if (
+        order.status === OrderStatus.PENDING
+        && dto.toStatus === OrderStatus.CONFIRMED
+        && order.acceptBy
+        && new Date() > order.acceptBy
+      ) {
+        throw new BadRequestException('Order acceptance window expired for one or more orders');
+      }
+    }
+
+    const statusUpdateData: {
+      status: OrderStatus;
+      acceptedAt?: Date | null;
+      acceptBy?: Date | null;
+    } = {
+      status: dto.toStatus,
+    };
+
+    if (dto.toStatus === OrderStatus.CONFIRMED) {
+      statusUpdateData.acceptedAt = new Date();
+    }
+
+    if (dto.toStatus === OrderStatus.PENDING) {
+      statusUpdateData.acceptedAt = null;
+      statusUpdateData.acceptBy = this.getAcceptByTimestamp();
+    }
+
+    const updatedOrders = await this.prisma.$transaction(async (tx) => {
+      return Promise.all(
+        uniqueOrderIds.map((orderId) =>
+          tx.order.update({
+            where: { id: orderId },
+            data: statusUpdateData,
+            include: { orderItems: true, payment: true },
+          }),
+        ),
+      );
+    });
+
+    if (dto.toStatus === OrderStatus.CANCELLED) {
+      for (const order of updatedOrders) {
+        await this.paymentsService.markRefundPendingOnCancel(
+          order.id,
+          'ORDER_CANCELLED_BY_STAFF',
+        );
+      }
+    }
+
+    for (const order of updatedOrders) {
+      this.gateway.emitStatusUpdate(order);
+    }
+
+    return {
+      updatedCount: updatedOrders.length,
+      orders: updatedOrders,
+    };
   }
 
   async cancel(id: string, userId: string, userRole: Role) {

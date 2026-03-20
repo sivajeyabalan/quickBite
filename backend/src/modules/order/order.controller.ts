@@ -4,6 +4,7 @@ import { OrderStatus, OrderType, Role } from '@prisma/client';
 import { OrdersService } from './order.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order.dto';
+import { BulkUpdateOrderStatusDto } from './dto/bulk-update-order-status.dto';
 import { CurrentUser } from '../auth/decorators/current.decorators';
 import { Roles } from '../auth/decorators/roles.decorators';
 
@@ -56,6 +57,16 @@ export class OrderController {
     @CurrentUser() user: any,
   ) {
     return this.orderService.updateStatus(id, dto, user.role);
+  }
+
+  @ApiOperation({ summary: 'Bulk update status for grouped orders (staff/admin only)' })
+  @Roles(Role.STAFF, Role.ADMIN)
+  @Patch('bulk-status')
+  bulkUpdateStatus(
+    @Body() dto: BulkUpdateOrderStatusDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.orderService.bulkUpdateStatus(dto, user.role);
   }
 
   @ApiOperation({ summary: 'Cancel an order' })

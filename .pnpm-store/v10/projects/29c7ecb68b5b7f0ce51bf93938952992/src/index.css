@@ -1,0 +1,62 @@
+@import url('https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&family=Montserrat:ital,wght@0,100..900;1,100..900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+
+@import "tailwindcss";
+
+@theme {
+  --font-heading: 'Lexend', sans-serif;
+  --font-body: 'Montserrat', sans-serif;
+  --font-ui: 'Montserrat', sans-serif;
+  --font-accent: 'Poppins', sans-serif;
+}
+
+@layer components {
+  .heading-1 {
+    @apply text-4xl font-bold;
+    font-family: var(--font-heading);
+  }
+  .heading-2 {
+    @apply text-3xl font-bold;
+    font-family: var(--font-heading);
+  }
+  .heading-3 {
+    @apply text-2xl font-semibold;
+    font-family: var(--font-heading);
+  }
+  .heading-4 {
+    @apply text-xl font-semibold;
+    font-family: var(--font-heading);
+  }
+  .body-text {
+    @apply text-base font-normal;
+    font-family: var(--font-body);
+  }
+  .body-text-sm {
+    @apply text-sm font-normal;
+    font-family: var(--font-body);
+  }
+  .button-text {
+    @apply text-sm font-semibold;
+    font-family: var(--font-ui);
+  }
+  .label-text {
+    @apply text-xs font-medium;
+    font-family: var(--font-ui);
+  }
+  .accent-text {
+    @apply text-sm font-medium;
+    font-family: var(--font-accent);
+  }
+
+  .font-heading {
+    font-family: var(--font-heading);
+  }
+  .font-body {
+    font-family: var(--font-body);
+  }
+  .font-ui {
+    font-family: var(--font-ui);
+  }
+  .font-accent {
+    font-family: var(--font-accent);
+  }
+}
