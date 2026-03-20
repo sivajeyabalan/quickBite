@@ -14,9 +14,13 @@ import { OrdersModule } from './modules/order/order.module';
 import { PaymentsModule } from './modules/payment/payment.module';
 import { GatewayModule } from './modules/gateway/gateway.module';
 import { UsersModule } from './modules/users/users.module';
+import { AssistantModule } from './modules/assistant/assistant.module';
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: ['.env', 'backend/.env'],
+    }),
     ThrottlerModule.forRoot([
       {
         ttl: Number(process.env.THROTTLE_TTL ?? 60),
@@ -31,6 +35,7 @@ import { UsersModule } from './modules/users/users.module';
     OrdersModule,
     PaymentsModule,
     GatewayModule,
+    AssistantModule,
   ],
   
   providers: [

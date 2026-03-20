@@ -121,3 +121,24 @@ export interface CartItem {
   imageUrl?:       string;
   customisations?: Record<string, string>;
 }
+
+export type AssistantRole = 'user' | 'assistant';
+
+export interface AssistantSuggestion {
+  id: string;
+  name: string;
+  price: string;
+  category: string;
+}
+
+export interface AssistantChatRequest {
+  message: string;
+  history: Array<{ role: AssistantRole; content: string }>;
+  pageContext?: 'menu';
+}
+
+export interface AssistantChatResponse {
+  reply: string;
+  menuSuggestions: AssistantSuggestion[];
+  quickReplies: string[];
+}

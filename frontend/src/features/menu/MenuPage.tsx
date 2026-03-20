@@ -5,6 +5,7 @@ import type { MenuItem, Category } from '../../types';
 import ItemCard from './ItemCart';
 import ItemDetailModal  from './ItemDetailModal';
 import SkeletonCard from '../../components/ui/Skeleton';
+import ChatAssistantWidget from '../assistant/ChatAssistantWidget';
 
 // ─── API Calls ────────────────────────────────────────
 
@@ -35,6 +36,7 @@ export default function MenuPage() {
   const [selectedItem, setSelectedItem]         = useState<MenuItem | null>(null);
   const [visibleCount, setVisibleCount]         = useState(INITIAL_VISIBLE_ITEMS);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  const menuTopRef = useRef<HTMLDivElement | null>(null);
 
   // Fetch categories
   const { data: categories = [] } = useQuery({
@@ -75,9 +77,20 @@ export default function MenuPage() {
     return () => observer.disconnect();
   }, [visibleCount, items.length]);
 
+  const scrollToMenu = () => {
+    menuTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const handleApplySearchFromAssistant = (itemName: string) => {
+    setSelectedCategory('');
+    setSearch(itemName);
+    scrollToMenu();
+  };
+
   return (
     <div className="w-full px-6 py-6">
       <main className="min-w-0">
+        <div ref={menuTopRef} />
 
         {/* Search Bar */}
         <div className="mb-6">
@@ -167,6 +180,10 @@ export default function MenuPage() {
       <ItemDetailModal
         item={selectedItem}
         onClose={() => setSelectedItem(null)}
+      />
+      <ChatAssistantWidget
+        onApplySearch={handleApplySearchFromAssistant}
+        onViewMenu={scrollToMenu}
       />
     </div>
   );
