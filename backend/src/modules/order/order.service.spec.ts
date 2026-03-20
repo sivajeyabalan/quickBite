@@ -6,7 +6,7 @@ import { PaymentsService } from '../payment/payment.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { OrderStatus, Role } from '@prisma/client';
 
-// ── Mock PrismaService ────────────────────────────────
+
 const mockPrisma = {
   menuItem: {
     findMany: jest.fn(),
@@ -50,7 +50,7 @@ describe('OrdersService', () => {
     mockPaymentsService.markRefundPendingOnCancel.mockResolvedValue({ status: 'NO_PAYMENT' });
   });
 
-  // ── Test 1 ────────────────────────────────────────
+ 
   describe('create', () => {
     it('should throw NotFoundException for invalid menuItemId', async () => {
       mockPrisma.menuItem.findMany.mockResolvedValue([]);
@@ -79,7 +79,7 @@ describe('OrdersService', () => {
     });
   });
 
-  // ── Test 2 ────────────────────────────────────────
+  
   describe('updateStatus', () => {
     it('should throw BadRequestException for invalid transition', async () => {
       mockPrisma.order.findUnique.mockResolvedValue({
@@ -90,7 +90,7 @@ describe('OrdersService', () => {
       await expect(
         service.updateStatus(
           'order-1',
-          { status: OrderStatus.READY }, // skip steps
+          { status: OrderStatus.READY }, 
           Role.ADMIN,
         ),
       ).rejects.toThrow(BadRequestException);
@@ -197,7 +197,7 @@ describe('OrdersService', () => {
     });
   });
 
-  // ── Test 3 ────────────────────────────────────────
+  
   describe('cancel', () => {
     it('should allow customer to cancel a pending order and emit status update', async () => {
       const updatedOrder = {

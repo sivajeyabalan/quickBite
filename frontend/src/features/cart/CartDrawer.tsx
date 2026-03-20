@@ -167,11 +167,11 @@ export default function CartDrawer() {
         onClick={() => dispatch(toggleCart())}
       />
 
-      {/* Drawer */}
+      
       <div className="fixed right-0 top-0 h-full w-full max-w-md bg-white
                       shadow-2xl z-50 flex flex-col">
 
-        {/* Header */}
+        
         <div className="flex items-center justify-between px-5 py-4
                         border-b border-gray-100">
           <h2 className="heading-3 text-gray-800">Your Cart</h2>
@@ -183,7 +183,7 @@ export default function CartDrawer() {
           </button>
         </div>
 
-        {/* Empty State */}
+        
         {items.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center
                           text-gray-400 gap-3">
@@ -193,14 +193,14 @@ export default function CartDrawer() {
           </div>
         ) : (
           <>
-            {/* Cart Items */}
+            
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
               {items.map((item: CartItem) => (
                 <div
                   key={item.menuItemId}
                   className="flex gap-4 bg-gray-50 rounded-xl p-3"
                 >
-                  {/* Image */}
+                  
                   <div className="w-16 h-16 rounded-lg bg-gray-200
                                   overflow-hidden shrink-0">
                     {item.imageUrl ? (
@@ -217,13 +217,13 @@ export default function CartDrawer() {
                     )}
                   </div>
 
-                  {/* Info */}
+                  
                   <div className="flex-1 min-w-0">
                     <p className="font-body font-medium text-gray-800 text-sm truncate">
                       {item.name}
                     </p>
 
-                    {/* Customisations */}
+                    
                     {item.customisations &&
                       Object.keys(item.customisations).length > 0 && (
                       <p className="text-xs text-gray-400 mt-0.5 truncate">
@@ -234,7 +234,7 @@ export default function CartDrawer() {
                     )}
 
                     <div className="flex items-center justify-between mt-2">
-                      {/* Quantity Controls */}
+                      
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => {
@@ -272,14 +272,14 @@ export default function CartDrawer() {
                         </button>
                       </div>
 
-                      {/* Line Total */}
+                      
                       <span className="accent-text font-bold text-orange-500">
                         ${(item.price * item.quantity).toFixed(2)}
                       </span>
                     </div>
                   </div>
 
-                  {/* Remove */}
+                  
                   <button
                     onClick={() => dispatch(removeItem(item.menuItemId))}
                     className="text-gray-300 hover:text-red-400 transition
@@ -312,7 +312,7 @@ export default function CartDrawer() {
                 </div>
               </div>
 
-              {/* Fine Dine Info */}
+              
               {orderType === 'FINE_DINE' && (
                 <div>
                   <label className="block font-ui text-sm font-medium text-gray-700 mb-1">
@@ -425,7 +425,7 @@ export default function CartDrawer() {
                 </div>
               )}
 
-              {/* Order Notes */}
+              
               <div>
                 <label className="block font-ui text-sm font-medium text-gray-700 mb-1">
                   Order Notes
@@ -442,9 +442,9 @@ export default function CartDrawer() {
               </div>
             </div>
 
-            {/* Footer — Totals + Place Order */}
+            
             <div className="border-t border-gray-100 px-5 py-4 space-y-3">
-              {/* Breakdown */}
+              
               <div className="space-y-1 text-sm text-gray-600">
                 <div className="flex justify-between">
                   <span>Subtotal</span>
@@ -461,7 +461,7 @@ export default function CartDrawer() {
                 </div>
               </div>
 
-              {/* Place Order Button */}
+              
               <button
                 onClick={handlePlaceOrder}
                 disabled={loading || items.length === 0}
@@ -472,7 +472,7 @@ export default function CartDrawer() {
                 {loading ? <Spinner size="sm" /> : `Place Order — $${total.toFixed(2)}`}
               </button>
 
-              {/* Clear Cart */}
+              
               <button
                 onClick={() => dispatch(clearCart())}
                 className="w-full text-sm text-gray-400 hover:text-red-400

@@ -1,4 +1,4 @@
-// src/main.ts
+
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
@@ -18,7 +18,7 @@ async function bootstrap() {
     .map((url) => url.trim())
     .filter(Boolean);
 
-  // ✅ CORS must be FIRST before any other middleware
+  
   app.enableCors({
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
@@ -52,7 +52,7 @@ async function bootstrap() {
    app.useGlobalInterceptors(new LoggingInterceptor());
 
 
-  // ─── Swagger ────────────────────────────────────────────────────
+ 
   const config = new DocumentBuilder()
     .setTitle('QuickBite API')
     .setDescription('Restaurant ordering system REST API')
@@ -67,7 +67,7 @@ async function bootstrap() {
   SwaggerModule.setup('docs', app, document, {
     swaggerOptions: { persistAuthorization: true },
   });
-  // ────────────────────────────────────────────────────────────────
+  
 
   await app.listen(process.env.PORT ?? 3001);
   console.log(`Frontend url is ${frontendUrls}`)

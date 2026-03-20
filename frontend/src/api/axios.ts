@@ -10,10 +10,10 @@ const API_BASE_URL = normalizedApiUrl
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  withCredentials: true, // sends httpOnly cookie automatically
+  withCredentials: true, 
 });
 
-// Attach access token to every request
+
 api.interceptors.request.use((config) => {
   const token = store.getState().auth.accessToken;
   if (token) {
@@ -22,7 +22,7 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Silent refresh on 401
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {

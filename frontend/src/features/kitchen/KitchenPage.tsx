@@ -267,7 +267,7 @@ export default function KitchenPage() {
     });
 
     socket.on('payment:cashSelected', (data: { orderId: string; orderNumber: string; message: string }) => {
-      toast(`💵 ${data.orderNumber}: ${data.message}`, { duration: 5000 });
+      toast(` ${data.orderNumber}: ${data.message}`, { duration: 5000 });
       queryClient.invalidateQueries({ queryKey: ['kitchen-orders'] });
     });
 

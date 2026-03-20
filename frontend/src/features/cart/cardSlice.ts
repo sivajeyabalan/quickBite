@@ -62,7 +62,7 @@ export const {
   clearCart, toggleCart, setOrderType,
 } = cartSlice.actions;
 
-// ─── Selectors ────────────────────────────────────────
+
 
 export const selectCartItems    = (state: any) => state.cart.items;
 export const selectCartOpen     = (state: any) => state.cart.isOpen;

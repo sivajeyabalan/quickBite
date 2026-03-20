@@ -21,14 +21,14 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       ? exception.getResponse()
       : null;
 
-    // Extract message — could be string or array (class-validator)
+    
     const message = typeof exceptionResponse === 'object' && exceptionResponse !== null
       ? (exceptionResponse as any).message
       : exception instanceof Error
         ? exception.message
         : 'Internal server error';
 
-    // Only log 500s in detail — don't pollute logs with 404s
+    
     if (status >= 500) {
       this.logger.error(
         `${request.method} ${request.url} → ${status}`,

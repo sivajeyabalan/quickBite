@@ -46,7 +46,7 @@ export default function AdminDashboard() {
   return (
     <div className="w-full px-6 py-8">
 
-      {/* Header */}
+      
       <div className="mb-6">
         <h1 className="heading-2 text-gray-800">Admin Dashboard</h1>
         <p className="body-text-sm text-gray-500 mt-1">
@@ -54,7 +54,7 @@ export default function AdminDashboard() {
         </p>
       </div>
 
-      {/* Tabs */}
+      
       <div className="flex gap-2 border-b border-gray-200 mb-6">
         {TABS.map(tab => (
           <button
@@ -79,7 +79,7 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      {/* Tab Content */}
+      
       {activeTab === 'analytics' && <Analytics />}
       {activeTab === 'menu'      && <MenuCRUD />}
       {activeTab === 'orders'    && <OrdersTable />}

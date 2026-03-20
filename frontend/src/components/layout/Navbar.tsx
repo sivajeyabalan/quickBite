@@ -40,19 +40,19 @@ export default function Navbar() {
     };
   }, [socket, isAdmin, queryClient]);
 
-  if (!user) return null; // hide navbar on login/register
+  if (!user) return null; 
 
   return (
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-40">
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
 
-        {/* Logo */}
+        
         <Link to="/" className="heading-3 text-orange-500 inline-flex items-center gap-2">
           <FontAwesomeIcon icon={faBurger} beatFade className="text-[1em]" />
           <span>QuickBite</span>
         </Link>
 
-        {/* Nav Links */}
+       
         <div className="flex items-center gap-6 font-ui text-sm font-medium text-gray-600">
           {!isStaff && !isAdmin && (
             <>
@@ -80,9 +80,9 @@ export default function Navbar() {
           )}
         </div>
 
-        {/* Right Side */}
+       
         <div className="flex items-center gap-4">
-          {/* Cart Button — customers only */}
+          
           {!isStaff && !isAdmin && (
             <button
               onClick={() => dispatch(toggleCart())}
@@ -98,7 +98,7 @@ export default function Navbar() {
             </button>
           )}
 
-          {/* User + Logout */}
+          
           <div className="flex items-center gap-3">
             <span className="text-sm text-gray-500">{user.name}</span>
             <button

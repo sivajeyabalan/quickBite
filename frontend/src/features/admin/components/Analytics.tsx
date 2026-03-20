@@ -16,7 +16,7 @@ const fetchAnalytics = async (): Promise<AnalyticsData> => {
   const res  = await api.get('/orders');
   const orders: Order[] = res.data.data ?? res.data;
 
-  // Calculate analytics client-side from orders data
+  
   const completed = orders.filter(o =>
     ['COMPLETED', 'SERVED'].includes(o.status)
   );
@@ -27,7 +27,7 @@ const fetchAnalytics = async (): Promise<AnalyticsData> => {
     ? totalRevenue / completed.length
     : 0;
 
-  // Top items by order count
+ 
   const itemCount: Record<string, number> = {};
   orders.forEach(order => {
     order.orderItems.forEach(item => {
@@ -41,7 +41,7 @@ const fetchAnalytics = async (): Promise<AnalyticsData> => {
     .slice(0, 5)
     .map(([name, count]) => ({ name, count }));
 
-  // Revenue by hour
+
   const hourMap: Record<number, number> = {};
   completed.forEach(order => {
     const hour = new Date(order.createdAt).getHours();
@@ -53,7 +53,7 @@ const fetchAnalytics = async (): Promise<AnalyticsData> => {
     revenue: hourMap[i] || 0,
   }));
 
-  // Status breakdown
+  
   const statusMap: Record<string, number> = {};
   orders.forEach(o => {
     statusMap[o.status] = (statusMap[o.status] || 0) + 1;
@@ -87,7 +87,7 @@ export default function Analytics() {
   return (
     <div className="space-y-6">
 
-      {/* ── Stat Cards ─────────────────────────── */}
+      
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
           {
@@ -122,7 +122,7 @@ export default function Analytics() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-        {/* ── Top 5 Items ────────────────────── */}
+        
         <div className="bg-white rounded-2xl border border-gray-100
                         shadow-sm p-5">
           <h2 className="font-semibold text-gray-700 mb-4">
@@ -156,7 +156,7 @@ export default function Analytics() {
           )}
         </div>
 
-        {/* ── Status Breakdown ───────────────── */}
+        
         <div className="bg-white rounded-2xl border border-gray-100
                         shadow-sm p-5">
           <h2 className="font-semibold text-gray-700 mb-4">
@@ -181,7 +181,7 @@ export default function Analytics() {
         </div>
       </div>
 
-      {/* ── Peak Hour Heatmap ──────────────────── */}
+      
       <div className="bg-white rounded-2xl border border-gray-100
                       shadow-sm p-5">
         <h2 className="font-semibold text-gray-700 mb-4">

@@ -22,7 +22,7 @@ export default function App() {
   const dispatch   = useDispatch<AppDispatch>();
   const { restoring, user, accessToken } = useSelector((s: RootState) => s.auth);
   const roleHomePath = user?.role === 'STAFF' ? '/kitchen' : user?.role === 'ADMIN' ? '/admin' : '/';
-  // On app load — try to restore session via refresh cookie
+  
   useEffect(() => {
     const restoreSession = async () => {
       const result = await dispatch(refreshThunk());
@@ -47,11 +47,11 @@ export default function App() {
       <Navbar />
       <CartDrawer />
       <Routes>
-        {/* Public */}
+        
         <Route path="/login"    element={accessToken ? <Navigate to={roleHomePath} replace /> : <LoginPage />} />
         <Route path="/register" element={accessToken ? <Navigate to={roleHomePath} replace /> : <RegisterPage />} />
 
-        {/* Customer */}
+        
         <Route path="/" element={
             <ProtectedRoute roles={['CUSTOMER', 'STAFF', 'ADMIN']}>
             {user?.role === 'STAFF' ? (
@@ -84,14 +84,14 @@ export default function App() {
           </ProtectedRoute>
         } />
 
-        {/* Staff */}
+        
         <Route path="/kitchen" element={
           <ProtectedRoute roles={['STAFF', 'ADMIN']}>
             <KitchenPage />
           </ProtectedRoute>
         } />
 
-        {/* Admin */}
+        
         <Route path="/admin" element={
           <ProtectedRoute roles={['ADMIN']}>
             <AdminDashboard />

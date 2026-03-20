@@ -34,7 +34,7 @@ export default function MenuCRUD() {
     queryFn:  fetchCategories,
   });
 
-  // ── Mutations ───────────────────────────────────
+  
   const createMutation = useMutation({
     mutationFn: (data: typeof EMPTY_FORM) => api.post('/menu', {
       ...data,
@@ -77,7 +77,7 @@ export default function MenuCRUD() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.delete(`/menu/${id}`),
     onSuccess: (res) => {
-      // Invalidate admin list and the public menu cache
+      
       queryClient.invalidateQueries({ queryKey: ['admin-menu'] });
       queryClient.invalidateQueries({ queryKey: ['menu'] });
 
@@ -119,7 +119,7 @@ export default function MenuCRUD() {
     },
   });
 
-  // ── Helpers ─────────────────────────────────────
+
   const resetForm = () => {
     setForm(EMPTY_FORM);
     setEditItem(null);
@@ -186,7 +186,7 @@ export default function MenuCRUD() {
 
   return (
     <div>
-      {/* Add Button */}
+      
       <div className="flex justify-end mb-4">
         <button
           onClick={() => { resetForm(); setShowForm(true); }}
@@ -197,7 +197,7 @@ export default function MenuCRUD() {
         </button>
       </div>
 
-      {/* ── Form ──────────────────────────────── */}
+      
       {showForm && (
         <div className="bg-white border border-gray-200 rounded-2xl p-6 mb-6">
           <h3 className="font-semibold text-gray-800 mb-4">
@@ -205,7 +205,7 @@ export default function MenuCRUD() {
           </h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Name */}
+            
             <div>
               <label className="label-text text-gray-500 mb-1 block">
                 Name *
@@ -219,7 +219,7 @@ export default function MenuCRUD() {
               />
             </div>
 
-            {/* Price */}
+            
             <div>
               <label className="label-text text-gray-500 mb-1 block">
                 Price *
@@ -235,7 +235,7 @@ export default function MenuCRUD() {
               />
             </div>
 
-            {/* Category */}
+            
             <div>
               <label className="label-text text-gray-500 mb-1 block">
                 Category *
@@ -255,7 +255,7 @@ export default function MenuCRUD() {
               </select>
             </div>
 
-            {/* Prep Time */}
+            
             <div>
               <label className="label-text text-gray-500 mb-1 block">
                 Prep Time (mins)
@@ -271,7 +271,7 @@ export default function MenuCRUD() {
               />
             </div>
 
-            {/* Image URL */}
+
             <div className="sm:col-span-2">
               <label className="label-text text-gray-500 mb-1 block">
                 Image URL
@@ -321,7 +321,7 @@ export default function MenuCRUD() {
               )}
             </div>
 
-            {/* Description */}
+            
             <div className="sm:col-span-2">
               <label className="label-text text-gray-500 mb-1 block">
                 Description
@@ -338,7 +338,7 @@ export default function MenuCRUD() {
               />
             </div>
 
-            {/* Availability */}
+            
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
@@ -355,7 +355,7 @@ export default function MenuCRUD() {
             </div>
           </div>
 
-          {/* Form Actions */}
+          
           <div className="flex gap-3 mt-5">
             <button
               onClick={resetForm}
@@ -380,7 +380,7 @@ export default function MenuCRUD() {
         </div>
       )}
 
-      {/* ── Filters ───────────────────────────── */}
+      
       <div className="flex flex-wrap gap-3 mb-4">
         <input
           type="text"
@@ -435,7 +435,7 @@ export default function MenuCRUD() {
         </span>
       </div>
 
-      {/* ── Items Table ───────────────────────── */}
+     
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm
                       overflow-hidden">
         <table className="w-full text-sm">

@@ -16,11 +16,11 @@ import { isItemOrderable } from '../menu/helpers/availability.helper';
 import { kitchenGateway } from '../gateway/gateway.gateway';
 import { PaymentsService } from '../payment/payment.service';
 
-const TAX_RATE = Number(process.env.TAX_RATE) || 0.10; // 10% tax — move to config in production
+const TAX_RATE = Number(process.env.TAX_RATE) || 0.10; 
 const ORDER_ACCEPT_SLA_MINUTES = Number(process.env.ORDER_ACCEPT_SLA_MINUTES) || 5;
 const ORDER_SLA_SWEEP_MS = Number(process.env.ORDER_SLA_SWEEP_MS) || 30_000;
 
-// Define valid status transitions — staff cannot skip steps
+
 const STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   PENDING:    [OrderStatus.CONFIRMED, OrderStatus.CANCELLED],
   CONFIRMED:  [OrderStatus.PENDING, OrderStatus.PREPARING, OrderStatus.CANCELLED],
@@ -143,13 +143,13 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
       };
     }
 
-    // Step 1 — Fetch all menu items in one query (not N queries in a loop)
+    
     const menuItemIds = dto.items.map(i => i.menuItemId);
     const menuItems = await this.prisma.menuItem.findMany({
       where: { id: { in: menuItemIds } },
     });
 
-    // Step 2 — Validate every requested item exists and is available
+    
     for (const ordered of dto.items) {
       const found = menuItems.find(m => m.id === ordered.menuItemId);
 
@@ -164,7 +164,7 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
         throw new BadRequestException(`"${found.name}": ${reason}`);
       }
 
-      // Check requested quantity does not exceed available stock
+      
       if (found.stockQty >= 0 && ordered.quantity > found.stockQty) {
         throw new BadRequestException(
           `"${found.name}" has only ${found.stockQty} units available, requested ${ordered.quantity}`
@@ -172,7 +172,7 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
       }
     }
 
-    // Step 3 — Calculate totals on the server, never trust client prices
+    
     let subtotal = 0;
     const orderItemsData = dto.items.map(ordered => {
       const menuItem = menuItems.find(m => m.id === ordered.menuItemId)!;
@@ -183,7 +183,7 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
         menuItemId:       menuItem.id,
         quantity:         ordered.quantity,
         unitPrice:        unitPrice,
-        itemNameSnapshot: menuItem.name,   // price freeze snapshot
+        itemNameSnapshot: menuItem.name,   
         customisations:   ordered.customisations ?? {},
       };
     });
@@ -191,11 +191,10 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
     const tax   = Number((subtotal * TAX_RATE).toFixed(2));
     const total = Number((subtotal + tax).toFixed(2));
 
-    // Step 4 — Generate order number
+    
     const orderNumber = await generateOrderNumber(this.prisma);
 
-    // Step 5 — Create order + all items in a single transaction
-    // If any part fails, the whole thing rolls back
+    
     const order = await this.prisma.$transaction(async (tx) => {
       return tx.order.create({
         data: {
@@ -224,7 +223,7 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
       });
     });
 
-    //Gateway : emit new order
+    
 
     this.gateway.emitNewOrder(order);
 
@@ -238,8 +237,7 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
   }) {
     const { status, orderType, date } = query;
 
-    // Customers see only their own orders
-    // Staff and Admin see everything
+    
     const userFilter = userRole === Role.CUSTOMER ? { userId } : {};
 
     const dateFilter = date ? {
@@ -285,7 +283,7 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
       throw new NotFoundException(`Order ${id} not found`);
     }
 
-    // Customer cannot view someone else's order
+    
     if (userRole === Role.CUSTOMER && order.userId !== userId) {
       throw new ForbiddenException('You do not have access to this order');
     }
@@ -309,7 +307,7 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
 
     this.validateTransitionOrThrow(order, dto.status, userRole);
 
-    // SLA guard: cannot confirm after acceptance window has expired
+    
     if (
       order.status === OrderStatus.PENDING &&
       dto.status === OrderStatus.CONFIRMED &&
@@ -348,7 +346,7 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
       statusUpdateData.acceptedAt = new Date();
     }
 
-    // Moving back to pending re-opens SLA window
+    
     if (dto.status === OrderStatus.PENDING) {
       statusUpdateData.acceptedAt = null;
       statusUpdateData.acceptBy = this.getAcceptByTimestamp();
@@ -367,7 +365,7 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
       );
     }
 
-    //gateway : fire event after successful DB update
+    
 
     this.gateway.emitStatusUpdate(updated)
 
@@ -466,7 +464,7 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
       throw new NotFoundException(`Order ${id} not found`);
     }
 
-    // Customer can only cancel their own order
+  
     if (userRole === Role.CUSTOMER && order.userId !== userId) {
       throw new ForbiddenException('You cannot cancel this order');
     }
@@ -477,7 +475,7 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
       );
     }
 
-    // Staff/admin fallback route still supports PENDING/CONFIRMED cancellations
+    
     if (userRole !== Role.CUSTOMER) {
       const cancellable: OrderStatus[] = [OrderStatus.PENDING, OrderStatus.CONFIRMED];
       if (!cancellable.includes(order.status)) {

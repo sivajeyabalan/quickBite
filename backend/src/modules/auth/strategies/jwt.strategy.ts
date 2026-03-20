@@ -1,4 +1,4 @@
-// src/auth/strategies/jwt.strategy.ts
+
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
@@ -20,7 +20,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       where: { id: payload.sub },
     });
 
-    // null refreshToken means the user has logged out — reject all access tokens
+    
     if (!user || user.refreshToken === null) throw new UnauthorizedException();
 
     return { id: user.id, email: user.email, role: user.role, name: user.name };

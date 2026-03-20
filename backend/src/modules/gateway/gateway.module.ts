@@ -3,6 +3,6 @@ import { kitchenGateway } from './gateway.gateway';
 
 @Module({
   providers: [kitchenGateway],
-  exports: [kitchenGateway], // Export so OrdersService can inject it
+  exports: [kitchenGateway], 
 })
 export class GatewayModule {}

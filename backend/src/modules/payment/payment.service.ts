@@ -47,7 +47,7 @@ export class PaymentsService {
   }
 
   async create(dto: CreatePaymentDto) {
-    // Step 1 — Verify order exists
+    
     const order = await this.prisma.order.findUnique({
       where: { id: dto.orderId },
       include: { payment: true },
@@ -57,12 +57,12 @@ export class PaymentsService {
       throw new NotFoundException(`Order ${dto.orderId} not found`);
     }
 
-    // Step 2 — Cannot pay for a cancelled order
+    
     if (order.status === OrderStatus.CANCELLED) {
       throw new BadRequestException('Cannot process payment for a cancelled order');
     }
 
-    // Step 3 — Prevent duplicate payment
+    
     if (order.payment) {
       throw new ConflictException('Payment already exists for this order');
     }
@@ -90,12 +90,11 @@ export class PaymentsService {
       return payment;
     }
 
-    // Step 4 — Amount comes from order, never from client
     const payment = await this.prisma.$transaction(async (tx) => {
       const newPayment = await tx.payment.create({
         data: {
           orderId:        dto.orderId,
-          amount:         order.total,        // from DB, not client
+          amount:         order.total,        
           method:         dto.method,
           status:         PaymentStatus.PAID,
           transactionRef: dto.transactionRef,
@@ -103,7 +102,7 @@ export class PaymentsService {
         },
       });
 
-      // Mark order as CONFIRMED after payment if still PENDING
+      
       if (order.status === OrderStatus.PENDING) {
         await tx.order.update({
           where: { id: dto.orderId },

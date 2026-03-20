@@ -36,7 +36,7 @@ export default function LoginPage(){
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-md p-8">
 
-        {/* Header */}
+        
         <div className="text-center mb-8">
           <h1 className="heading-2 text-orange-500 inline-flex items-center gap-2">
             <FontAwesomeIcon icon={faBurger} beatFade className="text-[1em]" />
@@ -46,7 +46,7 @@ export default function LoginPage(){
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Email */}
+          
           <div>
             <label className="block font-ui text-sm font-medium text-gray-700 mb-1">
               Email
@@ -67,7 +67,7 @@ export default function LoginPage(){
             )}
           </div>
 
-          {/* Password */}
+          
           <div>
             <label className="block font-ui text-sm font-medium text-gray-700 mb-1">
               Password
@@ -88,7 +88,7 @@ export default function LoginPage(){
             )}
           </div>
 
-          {/* Submit */}
+          
           <button
             type="submit"
             disabled={loading}

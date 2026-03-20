@@ -18,17 +18,17 @@ export class MenuService {
 
     return this.prisma.menuItem.findMany({
       where: {
-        deletedAt: null, // never expose soft-deleted items publicly
+        deletedAt: null, 
 
-        // Only filter by availability if explicitly passed
+        
         ...(available !== undefined && { isAvailable: available === 'true' }),
 
-        // Filter by category name if provided
+
         ...(category && {
           category: { name: { equals: category, mode: 'insensitive' } },
         }),
 
-        // Search in name OR description — case insensitive
+        
         ...(search && {
           OR: [
             { name: { contains: search, mode: 'insensitive' } },
@@ -44,7 +44,7 @@ export class MenuService {
   }
 
   async findAllAdmin() {
-    // Returns ALL items including soft-deleted, with order reference count
+    
     return this.prisma.menuItem.findMany({
       include: {
         category: { select: { id: true, name: true } },
@@ -68,7 +68,7 @@ export class MenuService {
   }
 
   async create(dto: CreateMenuItemDto) {
-    // Verify category exists before creating item
+    
     const category = await this.prisma.category.findUnique({
       where: { id: dto.categoryId },
     });
@@ -93,7 +93,7 @@ export class MenuService {
   }
 
   async update(id: string, dto: UpdateMenuDto) {
-    await this.findOne(id); // throws 404 if not found
+    await this.findOne(id); 
 
     return this.prisma.menuItem.update({
       where: { id },
@@ -103,17 +103,17 @@ export class MenuService {
   }
 
   async delete(id: string) {
-    // findUnique directly so we also find soft-deleted items
+    
     const item = await this.prisma.menuItem.findUnique({ where: { id } });
     if (!item) throw new NotFoundException(`Menu item with id ${id} not found`);
 
-    // Check how many order rows reference this item
+   
     const orderCount = await this.prisma.orderItem.count({
       where: { menuItemId: id },
     });
 
     if (orderCount > 0) {
-      // Soft delete — preserve order history integrity
+      
       const updated = await this.prisma.menuItem.update({
         where: { id },
         data:  { deletedAt: new Date(), isAvailable: false },
@@ -122,7 +122,7 @@ export class MenuService {
       return { type: 'soft' as const, item: updated, orderCount };
     }
 
-    // Hard delete — no references, safe to remove
+    
     await this.prisma.menuItem.delete({ where: { id } });
     return { type: 'hard' as const, id };
   }

@@ -1,9 +1,6 @@
 import { MenuItem } from '@prisma/client';
 
-/**
- * Check if a menu item is available for ordering
- * Factors: is86d, stockQty, time window, isAvailable flag
- */
+
 export function isItemOrderable(item: MenuItem): {
   available: boolean;
   reason?: string;
@@ -39,9 +36,7 @@ export function isItemOrderable(item: MenuItem): {
   return { available: true };
 }
 
-/**
- * Decrement stock for an item (if using stock tracking)
- */
+
 export function shouldDecrementStock(item: MenuItem): boolean {
   return item.stockQty >= 0;
 }
